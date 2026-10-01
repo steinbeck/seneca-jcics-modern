@@ -1,0 +1,154 @@
+<project name="seneca" default="compile" basedir=".">
+        <property name="build" value="build" />
+
+        <property name="src" value="src" />
+
+        <property name="dist" value="dist" />
+	
+	<property name="lib" value="jar" />
+	
+	<property name="bin" value="bin" />
+
+        <path id="project.class.path">
+                <pathelement
+                location="/usr/lib/j2sdk1.3/jre/lib/rt.jar" />
+
+                <pathelement location="." />
+
+                <fileset dir="./jar">
+                        <include name="*.jar" />
+                </fileset>
+        </path>
+
+        <target name="init">
+                <mkdir dir="${build}" />
+
+                <mkdir dir="${dist}" />
+        </target>
+
+        <target name="compile" depends="init">
+                <javac srcdir="${src}" destdir="${build}"
+                optimize="on" deprecation="on">
+                        <classpath refid="project.class.path" />
+                </javac>
+        </target>
+
+        <target name="clean">
+                <delete>
+                        <fileset dir="." includes="**/*~"
+                        defaultexcludes="no" />
+
+                        <fileset dir="." includes="**/*.class" />
+
+                        <fileset dir="." includes="*.tar.gz" />
+
+                        <fileset dir="." includes="*.zip" />
+                </delete>
+
+                <delete dir="${build}" />
+        </target>
+
+        <target name="rmicompile">
+                <rmic base="${build}"
+                includes="**/StructureGeneratorServer*.class">
+                        <classpath refid="project.class.path" />
+                </rmic>
+        </target>
+
+        <target name="dist-client" depends="compile, rmicompile">
+                <jar
+                jarfile="${dist}/${ant.project.name}-client.jar"
+                manifest="${src}/META-INF/Client-Manifest.mf">
+                        <fileset dir="${build}" />
+
+                        <fileset dir="${src}">
+                                <exclude name="**/*.java" />
+                        </fileset>
+                </jar>
+
+                <mkdir dir="${dist}/${lib}" />
+
+                <copy todir="${dist}/${lib}">
+                        <fileset dir="${lib}">
+                                <include name="*.jar" />
+                        </fileset>
+                </copy>
+                <copy todir="${dist}">
+                        <fileset dir="${bin}">
+                                <include name="*.bat" />
+				<include name="*.sh" />
+                        </fileset>
+                </copy>
+                <copy todir="${dist}">
+                        <fileset dir=".">
+                                <include name="*.*" />
+                        </fileset>
+                </copy>
+                <zip zipfile="${dist}/seneca.zip">
+                        <fileset dir="${dist}">
+                        	<include name="**/*.jar" />
+				<include name="**/*.bat" />
+				<include name="**/*.sh" />
+				<include name="**/*.sh" />
+				<include name="**/Readme.txt" />
+				<include name="**/License.txt" />
+			</fileset>
+			
+                </zip>
+        </target>
+
+        <target name="dist-server" depends="compile, rmicompile">
+                <jar
+                jarfile="${dist}/${ant.project.name}-server.jar"
+                manifest="${src}/META-INF/Server-Manifest.mf">
+                        <fileset dir="${build}" />
+
+                        <fileset dir="${src}">
+                                <exclude name="**/*.java" />
+                        </fileset>
+                </jar>
+        </target>
+
+        <target name="dist" depends="compile, rmicompile">
+                <jar
+                jarfile="${dist}/${ant.project.name}-all.jar">
+                        <fileset dir="${build}" />
+
+                        <fileset dir="${src}">
+                                <exclude name="**/*.java" />
+                        </fileset>
+                </jar>
+        </target>
+
+        <target name="run-client" depends="dist-client">
+                <java classname="seneca.client.Seneca"
+                fork="yes">
+                        <jvmarg value="-Dseneca.home=." />
+
+                        <classpath>
+                                <fileset dir="./jar">
+                                        <include name="*.jar" />
+                                </fileset>
+
+                                <pathelement
+                                location="${dist}/${ant.project.name}-client.jar" />
+                        </classpath>
+                </java>
+        </target>
+
+        <target name="test" depends="dist">
+                <java classname="seneca.test.SENECATests"
+                fork="yes">
+                        <classpath>
+                                <fileset dir="./lib">
+                                        <include name="*.jar" />
+                                </fileset>
+
+                                <pathelement
+                                location="${dist}/${ant.project.name}-all.jar" />
+                        </classpath>
+                </java>
+        </target>
+</project>
+
+

@@ -1,0 +1,11 @@
+# Compiled / packaged build output (this repo tracks source + deps + data only)
+build/
+dist/
+*.class
+
+# Legacy VCS metadata
+CVS/
+.svn/
+
+# OS cruft
+.DS_Store
