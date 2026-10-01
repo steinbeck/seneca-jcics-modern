@@ -1,0 +1,171 @@
+/* FeatureJudge.java
+ *
+ * Copyright (C) 1997, 1998, 1999, 2000  Dr. Christoph Steinbeck
+ *
+ * Contact: steinbeck@ice.mpg.de
+ *
+ * This software is published and distributed under artistic license.
+ * The intent of this license is to state the conditions under which this Package 
+ * may be copied, such that the Copyright Holder maintains some semblance
+ * of artistic control over the development of the package, while giving the 
+ * users of the package the right to use and distribute the Package in a
+ * more-or-less customary fashion, plus the right to make reasonable modifications.
+ *
+ * THIS PACKAGE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES, 
+ * INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTIBILITY AND 
+ * FITNESS FOR A PARTICULAR PURPOSE.
+ * 
+ * The complete text of the license can be found in a file called LICENSE 
+ * accompanying this package.
+ */
+
+package seneca.judges;
+
+import compchem.*;
+import java.util.*;
+
+/** Judges a structure by the existence or absense of certain features, like 
+  * particular ring sizes, hetero-hetero bonds, etc.
+  */
+
+public class FeatureJudge extends Judge implements java.io.Serializable, Cloneable{
+
+	public Hashtable ringSizeScores = new Hashtable();
+	protected int hetHetPenalty = -100;
+	protected boolean hetHetPenaltyEnabled = false;
+	protected boolean ringsizeRestrictionEnabled = false;
+	SetOfRingsFinder sorf = new SetOfRingsFinder();
+
+	public FeatureJudge()
+	{
+		super("FeatureJudge");
+		setRingSetRequired(true);
+		setHasMaxScore(true);
+	}
+
+	public void addRingSizeScore(int size, int score)
+	{
+		if (score != 0) ringSizeScores.put(new Integer(size), new Integer(score));			
+		fireChanged();
+	}
+
+	public int getRingSizeScore(int size)
+	{
+		if (ringSizeScores.contains(new Integer(size)))
+		{
+			return ((Integer)ringSizeScores.get(new Integer(size))).intValue();
+		}
+		else return 0;
+	}
+
+	public void init()
+	{
+		if (ringSizeScores.size() > 0)
+		{
+			ringsizeRestrictionEnabled = true;
+		}
+	}
+
+	public void calcMaxScore()
+	{
+		maxScore = 0;
+		if (ringsizeRestrictionEnabled)
+		{
+			for (Enumeration e = ringSizeScores.elements(); e.hasMoreElements();)
+			{
+				maxScore += ((Integer)e.nextElement()).intValue();
+			}
+		}
+		/*** 
+		 *** The hetHetPenalty only lowers the score
+		 ***  Its maximum contribution is 0, accordingly.
+		 ***/
+	}
+
+	public JudgeResult evaluate(int[][] bm)
+	{
+		scoreSum = 0;
+		int ringScore = 0;
+		int hetScore = 0;
+		String message = "<p>FeatureJudge->";
+		if (ringsizeRestrictionEnabled)
+		{
+			ringScore = judgeRingScore(); ringScore = judgeRingScore();
+			scoreSum += ringScore;
+			message += "RingScore: " + ringScore + ". ";
+		}
+		if (isHetHetPenaltyEnabled())
+		{
+			hetScore = judgeHetHetScore();
+			scoreSum += hetScore;
+			message += "HetHetScore: " + hetScore + ". ";
+		}
+		return new JudgeResult(0,scoreSum,0,message);
+	}
+
+
+	public int getHetHetPenalty()
+	{
+		return this.hetHetPenalty;
+	}
+
+	public void setHetHetPenalty(int hetHetPenalty)
+	{
+		fireChanged();
+		this.hetHetPenalty = hetHetPenalty;
+	}
+
+	private int judgeRingScore()
+	{
+		int ringscore = 0;
+		int ringsize = 0;
+		setOfRings sssr = sorf.findSSSR(attic.atomSet);
+		for (int f = 0; f < sssr.size();f++)
+		{
+			ringsize = ((Ring)sssr.elementAt(f)).size();
+			if (ringSizeScores.containsKey(new Integer(ringsize)))
+			{
+				ringscore +=((Integer)ringSizeScores.get(new Integer(ringsize))).intValue();
+			}
+		}
+		return ringscore;
+	}
+
+	private int judgeHetHetScore()
+	{
+		int score = 0;
+		Atom atom = null;
+		if (debug) System.out.println("judgeHetHetScore: " + isHetHetPenaltyEnabled());	
+		for (int f = 0; f < attic.atomSet.length; f++)
+		{
+			atom = (Atom)attic.atomSet[f];
+			if (!atom.symbol.equals("C"))
+			{
+				for (int g = 0; g < atom.degree; g++)
+				{
+					if (!atom.nodeTable[g].symbol.equals("C"))
+					{
+						score += hetHetPenalty;
+					}		
+				}
+			}
+		}
+		if (debug) System.out.println("judgeHetHetScore->score: " + score);	
+		return score / 2;
+	}
+
+
+
+	public boolean isHetHetPenaltyEnabled()
+	{
+		return this.hetHetPenaltyEnabled;
+	}
+
+	public void setHetHetPenaltyEnabled(boolean hetHetPenaltyEnabled)
+	{
+		this.hetHetPenaltyEnabled = hetHetPenaltyEnabled;
+		fireChanged();
+	}
+}	
+	
+

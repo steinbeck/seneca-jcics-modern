@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Main-Class: seneca.gatekeeper.GateKeeper
+Class-Path: jar/aelfred.jar jar/sax.jar jar/jaxp.jar jar/parser.jar jar/compchem.jar
+Created-By: 1.3.0 (Sun Microsystems Inc.)

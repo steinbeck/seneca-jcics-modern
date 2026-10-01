@@ -1,0 +1,171 @@
+/* TwoDSpectrumJudge.java
+ *
+ * Copyright (C) 1997, 1998, 1999, 2000  Dr. Christoph Steinbeck
+ *
+ * Contact: steinbeck@ice.mpg.de
+ *
+ * This software is published and distributed under artistic license.
+ * The intent of this license is to state the conditions under which this Package 
+ * may be copied, such that the Copyright Holder maintains some semblance
+ * of artistic control over the development of the package, while giving the 
+ * users of the package the right to use and distribute the Package in a
+ * more-or-less customary fashion, plus the right to make reasonable modifications.
+ *
+ * THIS PACKAGE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES, 
+ * INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTIBILITY AND 
+ * FITNESS FOR A PARTICULAR PURPOSE.
+ * 
+ * The complete text of the license can be found in a file called LICENSE 
+ * accompanying this package.
+ */
+
+package seneca.judges;
+
+import compchem.*;
+import java.util.Vector;
+import java.io.Serializable;
+
+
+
+public abstract class TwoDSpectrumJudge extends Judge implements Serializable, Cloneable{
+
+	public boolean[][][] assignment;
+	protected int numberOf2DSignals = 0;
+	private int cutoff;
+
+	public int scores[] = new int[7];
+
+	public Vector rules = new Vector();
+
+	public TwoDSpectrumJudge(String name)
+	{
+		super(name);
+		for (int i = 0; i < scores.length; i++) scores[i] = 0;
+		hasMaxScore = true;
+	}
+
+	/**
+	 * must be called before this Judge is passed to the Structure Generators 
+	 * Judges vector, in order for it to function properly
+	 */
+	public void init()
+	{
+		for (int f = 0; f < assignment.length; f++)
+		{
+			for (int g = 0; g < assignment.length; g++)
+			{
+				for (int h = 0; h < assignment.length; h++)
+				{
+					if (assignment[f][g][h]) rules.addElement(new TwoDRule(f, h));
+				}
+			}
+		}
+		for (int i = 0; i < scores.length; i++)
+		{
+			if (scores[i] > 0) cutoff = i + 1;
+		}
+		
+		
+	}
+	
+	public void calcMaxScore()
+	{
+		int max = 0; 
+		for (int f = 0; f < scores.length; f ++)
+		{
+			if (scores[f] > max) max = scores[f];
+		}
+		numberOf2DSignals = 0;
+		System.out.println(name + ": " + assignment);
+		for (int f = 0; f < assignment.length; f++)
+		{
+			for (int g = 0; g < assignment.length; g++)
+			{
+				for (int h = 0; h < assignment.length; h++)
+				{
+					if (assignment[f][g][h]) numberOf2DSignals += 1;
+				}
+			}
+		}
+		maxScore = numberOf2DSignals * max;
+	
+	}
+
+	public JudgeResult evaluate(int[][] bm)
+	{
+		if (assignment == null)
+		{
+			resultString = "<p>No signals available for " + name + "</p>";
+			return new JudgeResult(0,0,0, resultString);
+		}
+		scoreSum = 0;
+		int satisfiedSignals = 0;
+		int plength = 0; 
+		TwoDRule rule;
+//		for (int f = 0; f < attic.apsp.length;f++)
+//		{
+//			for (int g = 0; g < attic.apsp.length; g++)
+//			{
+//				if (assignment[f][g][g])
+//				{
+//					/** we have a rule here, so we must scan the 
+//					* the third dimension for alternativ assignments
+//					*/
+//					for (int h = 0; h < attic.apsp.length; h++)
+//					{
+//						if (assignment[f][g][h] && attic.apsp[f][h] > 0 && attic.apsp[f][h] < 7 && scores[attic.apsp[f][h] - 1] > 0)
+//						{
+//							scoreSum += scores[attic.apsp[f][h] - 1];
+//							satisfiedSignals ++;
+//						}
+//					}
+//				}
+//			}	
+//		}
+
+		for (int f = 0; f < rules.size();f++)
+		{
+			rule = (TwoDRule)rules.elementAt(f);
+			plength = PathUtils.getPathLength(attic.atomSet, attic.atomSet[rule.atom1], attic.atomSet[rule.atom2], cutoff);	
+			if (plength > 0) scoreSum += scores[plength - 1];
+			satisfiedSignals ++;
+//			System.out.println(satisfiedSignals);
+			
+		}
+		resultString = "<p>" + satisfiedSignals + "/" + numberOf2DSignals + " Signals satisfied in " + name + ". Score " + scoreSum + "/" + maxScore + "</p>";
+		return new JudgeResult(maxScore,scoreSum,satisfiedSignals, resultString);
+	}
+
+	public void setScores(int[] scores)
+	{
+		this.scores = scores;
+	}
+	
+	public void setScore(int score, int position)
+	{
+		if (position >= scores.length || position < 0) return;
+		scores[position] = score;
+	}
+	
+	public String toString()
+	{
+		StringBuffer sb = new StringBuffer();
+		if (name == null || assignment == null) return "";
+		sb.append("Configuration of TwoDSpectrumJudge " + name + ":\n");
+		sb.append("Listing relation of nuclei by number...\n");
+		for (int f = 0; f < assignment.length; f++)
+		{
+			for (int g = 0; g < assignment.length; g++)
+			{
+				for (int h = 0; h < assignment.length; h++)
+				{
+					if (assignment[f][g][h]) sb.append(f + "-" + h + "\n");
+				}
+			}
+		}
+		sb.append("End of listing");
+		return sb.toString();
+	}
+	
+}	
+	

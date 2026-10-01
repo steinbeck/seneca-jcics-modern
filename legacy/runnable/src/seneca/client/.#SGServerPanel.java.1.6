@@ -1,0 +1,895 @@
+/* SGServerPanel.java
+ *
+ * Copyright (C) 1997, 1998, 1999  Dr. Christoph Steinbeck
+ *
+ * Contact: steinbeck@ice.mpg.de
+ *
+ * This software is published and distributed under artistic license.
+ * The intent of this license is to state the conditions under which this Package 
+ * may be copied, such that the Copyright Holder maintains some semblance
+ * of artistic control over the development of the package, while giving the 
+ * users of the package the right to use and distribute the Package in a
+ * more-or-less customary fashion, plus the right to make reasonable modifications.
+ *
+ * THIS PACKAGE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES, 
+ * INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTIBILITY AND 
+ * FITNESS FOR A PARTICULAR PURPOSE.
+ * 
+ * The complete text of the license can be found in a file called LICENSE 
+ * accompanying this package.
+ */
+
+package seneca.client;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.util.Vector;
+import java.net.*;
+import java.rmi.*;
+import java.io.*;
+import javax.swing.*;
+import javax.swing.table.*;
+import javax.swing.event.*;
+import javax.swing.border.*;
+import javax.swing.text.html.*;
+import compchem.*;
+import jmdraw.*;
+import seneca.structgen.*;
+import seneca.judges.*;
+import seneca.compute.*;
+import seneca.core.*;
+import seneca.gatekeeper.*;
+import com.jrefinery.chart.*;
+
+/**
+ *
+ **/
+public class SGServerPanel extends JPanel 
+{
+	/**
+	* Table model for table that displays available servers
+	**/
+	protected TableModel tableModel;
+
+	/**
+	* Table that displays available servers
+	**/
+	protected JTable table;
+
+	/**
+	* Scrollpane for table
+	**/
+	protected JScrollPane scrollpane;
+
+	/**
+	* Scrollpane for reportArea
+	**/
+	protected JScrollPane reportScrollPane;
+
+	/**
+	* Various Boxes for organizing the Layout of this Panel
+	**/
+	protected Box southBox;
+	protected Box centerBox;
+	protected Box centerCenterBox;
+	protected JPanel handleSelectedButtonsPanel;
+	protected JPanel serverAdminButtonsPanel;
+	protected JPanel resultButtonsPanel;
+
+	JMDrawPanel jmdPanel = null;
+	
+	JFreeChartPanel chartPanel;
+	JFreeChart chart;
+	XYDataSource dataSource;
+	Float[][][] alData;
+	
+	
+	
+	Border border = null;
+
+	/**
+	* 
+	**/
+	protected JTextField statusField;
+
+	/**
+	* 
+	**/
+	protected JEditorPane reportPane;
+	
+
+	
+	/**
+	* The Control Buttons of this Panel. The Names should
+	* be selfexplanatory
+	**/
+	protected JButton closeButton;
+	protected JButton stopSelectedButton;
+	protected JButton updateButton;
+	protected JButton showCurrentResultButton;
+	protected JButton goButton;
+	protected JButton resetButton;
+	protected JButton startLocalButton;
+	protected JButton clearListButton;
+
+	/**
+	* A Timer that updates the server information every two seconds.
+ 	**/
+	protected Timer tableUpdateTimer; 
+
+	protected Vector sgServerProcesses = new Vector();
+
+	/**
+	*
+	**/
+	SenecaDataset sd;
+
+	/**
+	*
+	**/
+	StructureGeneratorResult structureGeneratorResult;
+
+	public Dimension jmdDim = new Dimension(300, 300);
+
+
+	/**
+	* Vector holding the annealing schedules
+	**/
+	Vector schedules;
+
+	int currentBest = 0;
+
+	/* Used in the update method of the timer to load the table with 
+	a new model once the net has been scanned completely */
+	boolean newModelNeeded = true; 
+
+
+
+	/**
+	*
+	**/
+
+	static int ALL = 0, SEL = 1;
+
+	public SGServerPanel(SenecaDataset sd)
+	{
+		super();
+		table = new JTable(new SGServerTableModel())
+		{
+			/**
+			*
+			**/
+			public Dimension getPreferredSize()
+			{
+				return (new Dimension(scrollpane.getSize().width,(getRowCount() + 2) * getRowHeight()));
+			}
+
+		}
+		;
+		this.sd = sd;
+		this.schedules = sd.annealingSchedules;
+		FontMetrics fm = getFontMetrics(table.getFont());
+		for(int f = 0;f < table.getColumnCount();f++)
+		{
+			TableColumn column = table.getColumn(table.getColumnName(f));
+			column.setWidth((int)(fm.stringWidth(table.getColumnName(f)) * 1.2));
+			DefaultTableCellRenderer columnRenderer = new DefaultTableCellRenderer();
+			columnRenderer.setBackground(Color.yellow);
+		}
+		TableColumn column = null;
+		Component comp = null;
+		int headerWidth = 0;
+		int cellWidth = 0;
+		JButton placeholder = new JButton("");
+		setCellRendering();
+		scrollpane = new JScrollPane(table);
+		scrollpane.setBorder(new BevelBorder(BevelBorder.LOWERED));
+		setLayout(new BorderLayout());
+		southBox = new Box(BoxLayout.X_AXIS);;
+		handleSelectedButtonsPanel = new JPanel(new GridLayout(3,1));
+		serverAdminButtonsPanel = new JPanel(new GridLayout(3,1));
+		resultButtonsPanel = new JPanel(new GridLayout(3,1));
+		String title = "Server Admin";
+		serverAdminButtonsPanel.setBorder(BorderFactory.createTitledBorder(border, title));
+		title = "Selections";
+		handleSelectedButtonsPanel.setBorder(BorderFactory.createTitledBorder(border, title));
+		title = "Result";
+		resultButtonsPanel.setBorder(BorderFactory.createTitledBorder(border, title));
+
+		centerBox = new Box(BoxLayout.Y_AXIS);
+		centerCenterBox = new Box(BoxLayout.X_AXIS);
+		statusField = new JTextField();
+		
+		startLocalButton = new JButton("Start local server");
+		startLocalButton.addActionListener(new StartLocalAction());
+		updateButton = new JButton("Update server list");
+		updateButton.addActionListener(new ScanNetAction());
+		clearListButton = new JButton("Clear Server List");
+		clearListButton.addActionListener(new ClearListAction());
+		serverAdminButtonsPanel.add(startLocalButton);
+		serverAdminButtonsPanel.add(updateButton);
+		serverAdminButtonsPanel.add(clearListButton);
+
+     	goButton = new JButton("Start as selected");
+		goButton.addActionListener(new goAction());
+		stopSelectedButton = new JButton("Stop Selected");
+		stopSelectedButton.addActionListener(new stopSelectedAction());
+		resetButton = new JButton("Reset selected");
+		resetButton.addActionListener(new ResetSelectedAction());
+		handleSelectedButtonsPanel.add(goButton);
+		handleSelectedButtonsPanel.add(stopSelectedButton);
+		handleSelectedButtonsPanel.add(resetButton);
+		
+		showCurrentResultButton = new JButton("Summarize Result");
+		showCurrentResultButton.addActionListener(new ShowCurrentAction());
+		resultButtonsPanel.add(showCurrentResultButton);
+
+		southBox.add(serverAdminButtonsPanel);
+		southBox.add(handleSelectedButtonsPanel);
+		southBox.add(resultButtonsPanel);
+		add("South",southBox);
+		
+		scrollpane.setPreferredSize(new Dimension(400,200));
+		reportPane = new JEditorPane();
+		reportPane.setEditable(false);
+		reportPane.setEditorKit(new HTMLEditorKit());
+		reportScrollPane = new JScrollPane(reportPane);
+		reportScrollPane.setPreferredSize(new Dimension(200, 300));
+		border = BorderFactory.createEtchedBorder();
+		jmdPanel = new JMDrawPanel();
+		jmdPanel.setPreferredSize(new Dimension(200, 300));
+		title = "No structure available";
+		jmdPanel.setBorder(BorderFactory.createTitledBorder(border, title));
+		title = "Current Structure Evaluation";
+		reportScrollPane.setBorder(BorderFactory.createTitledBorder(border, title));
+		centerBox.add(scrollpane);
+		centerCenterBox.add(jmdPanel);
+		centerCenterBox.add(reportScrollPane);
+		centerCenterBox.add(getAnnealingViewPanel());
+		centerBox.add(centerCenterBox);
+		add("Center",centerBox);
+		add("North",statusField);
+		tableUpdateTimer = new Timer(2000,new updateAction());
+		tableUpdateTimer.start();
+		scrollpane.repaint();
+		System.out.println("SGServerPanel contructed");
+	}
+
+
+
+	private JFreeChartPanel getAnnealingViewPanel()
+	{
+		Float[][][] alData = new Float[2][1][2];
+		alData[0][0][0] = new Float(1.0);
+		alData[0][0][1] = new Float(1.0);		
+		alData[1][0][0] = new Float(1.0);
+		alData[1][0][1] = new Float(1.0);		
+		
+		dataSource = new DefaultXYDataSource(alData);
+		chart = JFreeChart.createXYChart(dataSource);
+		chartPanel = new JFreeChartPanel(chart);;
+		return chartPanel;
+	}
+
+
+	/**
+	*
+	**/
+	protected void setCellRendering()
+	{
+		JLabel label = new JLabel();
+		TableColumn column;
+		table.setRowSelectionAllowed(true);
+		table.setColumnSelectionAllowed(false);
+		for(int f = 0;f < table.getColumnCount();f++)
+		{
+			column = table.getColumn(table.getColumnName(f));
+			label.setVerticalAlignment(JLabel.CENTER);
+			label.setHorizontalAlignment(JLabel.CENTER);
+			DefaultTableCellRenderer columnRenderer = new DefaultTableCellRenderer();
+			columnRenderer.setBackground(Color.yellow);
+			column.setCellRenderer(columnRenderer);
+		}
+	}
+
+
+	class SGServerTableModel extends AbstractTableModel
+	{
+		/**
+		*
+		**/
+		String[] names = {"No.", "ID", "Running on Host", "Dataset name", "Molecular Formula", "Status ", "Iter/Total"};
+
+		/**
+		*
+		**/
+		SGServerTableModel()
+		{
+		}
+
+		/**
+		*
+		**/
+		public int getColumnCount()
+		{
+			return names.length;
+		}
+
+		/**
+		*
+		**/
+		public int getRowCount()
+		{
+			return sgServerProcesses.size();
+		}
+
+		/**
+		*
+		**/
+		public Object getValueAt(int row, int column)
+		{
+			Compute server = (Compute)sgServerProcesses.elementAt(row);
+			StructureGeneratorStatus status	 = null;
+			try
+			{
+				status = (StructureGeneratorStatus)server.getTaskStatus();				
+			}
+			catch(Exception exc)
+			{
+				//exc.printStackTrace();
+				return "-";
+			}
+			switch(column)
+			{
+				/* Number of Row */
+				case 0:
+					return String.valueOf(row + 1);
+				case 1:
+					try
+					{
+						return server.getID();
+					}
+					catch(Exception exc)
+					{
+						System.err.println("getID(): " + exc.toString());
+					}
+
+				/* Host name on which server resides */
+			case 2:
+				try
+				{
+					return server.getHostName();
+				}
+				catch(Exception exc)
+				{
+					System.err.println("getHostName(): " + exc.toString());
+				}
+				/* Name of Dataset handed to the server when Structure calculation started */
+			case 3:
+				try
+				{
+					if (status == null) return "none";
+					return status.datasetName;
+				}
+				catch(Exception exc)
+				{
+					System.err.println("getDatasetName(): " + exc.toString());
+				}
+				/* Corresponding Molecular formula of Dataset on Server */
+			case 4:
+				try
+				{
+					if (status == null) return "none";					
+					return status.molecularFormula;
+				}
+				catch(Exception exc)
+				{
+					System.err.println("getMF(): " + exc.toString());
+				}
+				/* Status of SG-Server: "Waiting for Job", "Generating", "Holding results" */
+			case 5:
+				try
+				{
+					if (status == null) return "idle";					
+					return status.status;
+				}
+				catch(Exception exc)
+				{
+					System.err.println("getStatus(): " + exc.toString());
+				}
+				/* Current iteration and percent-completed information for the current generation on server */
+			case 6:
+				try
+				{
+					if (status == null) return new String("none");					
+					return new String ("" + status.iteration);
+				}
+				catch(Exception exc)
+				{
+					System.err.println("getCurrentIteration(): " + exc.toString());
+				}
+				}
+			return "-";
+		}
+
+		/**
+		*
+		**/
+		public String getColumnName(int column)
+		{
+			return names[column];
+		}
+
+		/**
+		*
+		**/
+		public Class getColumnClass(int c)
+		{
+			//			System.out.println("Column " + c);
+			return getValueAt(0,c).getClass();
+		}
+
+		/**
+		*
+		**/
+		public boolean isCellEditable(int row, int col)
+		{
+			if(col == 0)
+				return false;
+			else
+				return true;
+		}
+
+		/**
+		*
+		**/
+		public void setValueAt(Object aValue, int row, int column)
+		{
+		}
+
+	}
+
+
+	class updateAction extends AbstractAction
+	{
+
+
+		/**
+		*
+		**/
+		updateAction()
+		{
+			super("updateTableFrame");
+		}
+
+		/**
+		*
+		**/
+		public void actionPerformed(ActionEvent e)
+		{
+			Atom[] son;
+			String title;
+			Compute sgi;
+			String structure;
+			boolean stillAlive = false;
+			int aliveCount = 0;   		 
+			FastResolver fr = null;
+			StringBuffer reportText = new StringBuffer();
+			String message = null;
+			table.repaint();
+			StructureGeneratorStatus sgs = null;
+			AnnealingLog al = null;
+			if (sgServerProcesses.size() > 0)
+			{
+				Compute	server = (Compute)sgServerProcesses.elementAt(currentBest);
+				try
+				{
+					sgs = (StructureGeneratorStatus) server.getTaskStatus();
+					al = sgs.al;
+					alData = al.getValues();
+
+					dataSource = new DefaultXYDataSource(alData);
+					System.out.println(dataSource.getItemCount(0) + ", " + dataSource.getYValue(0, 3));
+					chart = JFreeChart.createXYChart(dataSource);
+					
+					chartPanel = new JFreeChartPanel(chart);
+					centerCenterBox.add(chartPanel);
+					tableUpdateTimer.stop();
+					if (sgs != null)
+					{
+						structure = ((StructureGeneratorStatus)server.getTaskStatus()).bestStructure;
+						son = ChemFileUtils.readMDLMolFile(new BufferedReader(new StringReader(structure)));
+						if (son == null)
+						{
+							title = "No structure available";
+							jmdPanel.setBorder(BorderFactory.createTitledBorder(border, title));
+							jmdPanel.getJMDraw().atomSet = null;
+							jmdPanel.getJMDraw().draw();
+							jmdPanel.repaint();
+							reportPane.setText("");
+						}
+						else
+						{
+							title = "Best structure of no." + (currentBest + 1);
+							jmdPanel.setJMDraw(new JMDraw(son));
+//							jmdPanel.getJMDraw().atomSet = son;
+							jmdPanel.setBorder(BorderFactory.createTitledBorder(border, title));
+							jmdPanel.getJMDraw().draw();
+							jmdPanel.repaint();
+							reportText.append("<html>\n");
+							reportText.append("<b>Score: " + sgs.bestEvaluation.score);
+							if (sgs.bestEvaluation.maxScore > 0)
+							{
+								reportText.append("/" + sgs.bestEvaluation.maxScore);
+							}
+							reportText.append( "</b>");
+							reportText.append(((StructureGeneratorStatus)server.getTaskStatus()).bestEvaluation.description + "</html>\n");
+							title = "Status of no." + (currentBest + 1);
+							reportPane.setBorder(BorderFactory.createTitledBorder(border, title));							
+							reportPane.setText(reportText.toString());
+						}
+					}										
+				}
+				catch(Exception exc)
+				{
+//					System.out.println(".");
+//					System.out.println(exc);
+				}
+
+				currentBest ++;
+				if (currentBest == sgServerProcesses.size()) currentBest = 0;
+			}
+			scrollpane.repaint();
+
+		}
+	}
+
+	class stopSelectedAction extends AbstractAction
+	{
+		/**
+		*
+		**/
+		stopSelectedAction()
+		{
+			super("stopSelected");
+		}
+		/**
+		*
+		**/
+		public void actionPerformed(ActionEvent e)
+		{
+			int rows[] = table.getSelectedRows();
+			int[] selrows = new int[sgServerProcesses.size()];
+			for (int f = 0; f < rows.length; f++) selrows[rows[f]] = 1;
+			Compute server;
+
+			for(int f = 0;f < sgServerProcesses.size();f++)
+			{
+				if (selrows[f] == 1)
+				{
+					server = (Compute)sgServerProcesses.elementAt(f);
+					try
+					{
+						server.endTask();
+					}
+					catch(Exception exc)
+					{
+						System.out.println("Error while stopping calculation on no." + f);
+						System.out.println(exc.toString());
+					}
+				}
+			}      
+		}
+
+	}
+
+	class ResetSelectedAction extends AbstractAction
+	{
+		/**
+		*
+		**/
+		ResetSelectedAction()
+		{
+			super("ResetSelected");
+		}
+		/**
+		*
+		**/
+		public void actionPerformed(ActionEvent e)
+		{
+			int rows[] = table.getSelectedRows();
+			int[] selrows = new int[sgServerProcesses.size()];
+			for (int f = 0; f < rows.length; f++) selrows[rows[f]] = 1;
+			Compute server;
+
+			for(int f = 0;f < sgServerProcesses.size();f++)
+			{
+				if (selrows[f] == 1)
+				{
+					server = (Compute)sgServerProcesses.elementAt(f);
+					try
+					{
+						server.resetTask();
+					}
+					catch(Exception exc)
+					{
+						System.out.println("Error while stopping calculation on no." + f);
+						System.out.println(exc.toString());
+					}
+				}
+			}      
+		}
+
+	}
+
+	class ClearListAction extends AbstractAction
+	{
+		/**
+		*
+		**/
+		ClearListAction()
+		{
+			super("ClearList");
+		}
+		/**
+		*
+		**/
+		public void actionPerformed(ActionEvent e)
+		{
+			tableUpdateTimer.stop();
+			sgServerProcesses.setSize(0);
+			tableUpdateTimer.start();
+		}
+	}
+
+	class goAction extends AbstractAction
+	{
+		/**
+		*
+		**/
+		goAction()
+		{
+			super("go");
+		}
+
+		/**
+		*
+		**/
+		public void actionPerformed(ActionEvent e)
+		{
+			int hetCounter = 0;
+			Vector judges = null;
+			Vector annealingSchedules = null;
+			Judge judge = null;
+			int rows[] = table.getSelectedRows();
+			int[] selrows = new int[sgServerProcesses.size()];
+			for (int f = 0; f < rows.length; f++) selrows[rows[f]] = 1;
+			Atom[] setOfNodes = sd.getSetOfNodes();
+			Compute sgi;
+
+			/* Counter hetero atoms. If there are more than one add a penalty for het-het bonds. */
+			for (int f = 0; f < setOfNodes.length; f++)
+			{
+				if (!setOfNodes[f].symbol.equals("C") && !setOfNodes[f].symbol.equals("H")) hetCounter ++;  
+			} 
+
+			for(int f = 0;f < sgServerProcesses.size();f++)
+			{
+				if (selrows[f] == 1)
+				{
+					sgi = (Compute)sgServerProcesses.elementAt(f);
+					StochasticGenerator stoicGent = new StochasticGenerator();
+					judges = new Vector();
+					for (int g = 0; g < sd.judges.size(); g++)
+					{
+						judge = ((Judge)sd.judges.elementAt(g));
+						if (judge.getEnabled())
+						{
+							judge.calcMaxScore();
+							judges.addElement(judge);
+						}
+					}
+					annealingSchedules = new Vector();
+					try
+					{
+						for (int g = 0; g < sd.annealingSchedules.size(); g++)
+						{
+							annealingSchedules.addElement(((AnnealingSchedule)sd.annealingSchedules.elementAt(g)).clone());
+						}
+
+						stoicGent.setAtomSet(sd.getSetOfNodes());
+						stoicGent.setJudges(judges);
+						//stoicGent.setJudges((Vector)sd.judges.clone());
+						stoicGent.setDatasetName(sd.getName());
+						stoicGent.setSASchedules(annealingSchedules);
+						System.out.println(stoicGent);
+						sgi.executeTask(stoicGent);
+					}
+					catch(Exception exc)
+					{
+						System.out.println("Error while starting calculation on no." + f);
+						System.out.println(exc.toString());
+						exc.printStackTrace();
+					}
+				}
+			}
+		}
+	}
+
+	class ScanNetAction extends AbstractAction
+	{
+
+		/**
+		*
+		**/
+		ScanNetAction()
+		{
+			super("ScanNet");
+
+		}
+
+		/**
+		*
+		**/
+		public void actionPerformed(ActionEvent e)
+		{
+			String namingLookup;
+			ServerInfo si;
+			
+			Vector serverInfos = new Vector();
+			sgServerProcesses.setSize(0);
+			try{
+				String gateKeeper = "www.nmrshiftdb.org";
+				namingLookup = "//" + gateKeeper + "/GateKeeper";
+				GateKeeperInterface gki = (GateKeeperInterface)Naming.lookup(namingLookup);
+				serverInfos = gki.getHosts(8);
+			}
+			catch(Exception exc)
+			{
+				exc.printStackTrace();
+				return;
+			}
+			
+			for (int f = 0; f < serverInfos.size(); f++)
+			{
+				si = (ServerInfo)serverInfos.elementAt(f);
+				try{
+					namingLookup = "//" + si.getHostname() + "/StoIcGentServer";
+					Compute stoicGent = (Compute)Naming.lookup(namingLookup);
+					if (stoicGent.willingToManage())
+					{
+						sgServerProcesses.addElement(stoicGent);
+						scrollpane.revalidate();
+					}
+				}
+				catch(Exception exc)
+				{
+				}
+			}
+
+		}
+
+	}
+
+
+	class StartLocalAction extends AbstractAction
+	{
+
+		/**
+		*
+		**/
+		StartLocalAction()
+		{
+			super("StartLocal");
+
+		}
+
+		/**
+		*
+		**/
+		public void actionPerformed(ActionEvent e)
+		{
+			try
+			{
+				tableUpdateTimer.stop();
+				sgServerProcesses.addElement(new seneca.engine.StructureGeneratorServer("local" + sgServerProcesses.size()));
+				tableUpdateTimer.start();
+				scrollpane.repaint();
+			}
+			catch(Exception exc)
+			{
+				System.out.println("Local StoicGent service could not be created.");
+			}
+
+			scrollpane.revalidate();
+
+		}
+
+	}
+
+
+	class ShowCurrentAction extends AbstractAction
+	{
+
+		ShowCurrentAction()
+		{
+			super("Show Current");
+		}
+
+		/**
+		*
+		**/
+		public void actionPerformed(ActionEvent e)
+		{
+			int members = 0;
+			StrucDispFrame sdf = null;
+			IsomorphismTester isoTest;
+			boolean removed;
+			Compute sgi = null;
+			JMDrawPanel jmdPanel = null;
+			Atom[] setOfNodes = null;
+			String title = "", serverTitle = "";
+			StructureGeneratorResult result = new StructureGeneratorResult(sgServerProcesses.size() * 10);
+			StructureGeneratorStatus sgs = null;
+			try
+			{
+				for(int i = 0;i < sgServerProcesses.size();i++)
+				{
+					sgi = (Compute)sgServerProcesses.elementAt(i);
+					result = (StructureGeneratorResult)sgi.getTaskResult();
+					if (result != null)
+					{
+						members = result.structures.size();
+						for(int f = 0;f < members;f++)
+						{
+							result.structures.push(structureGeneratorResult.structures.pop());
+							result.scoreSummaries.push(structureGeneratorResult.scoreSummaries.pop());
+						}
+					}
+				}
+				}
+			catch(Exception exc)
+			{
+				System.out.println(exc.toString());
+				}
+			if(sdf == null)
+			{
+				sdf = new StrucDispFrame();
+				sdf.setSize(new Dimension(600,400));
+				}
+			sdf.setVisible(true);
+			try
+			{
+				serverTitle = sgi.getID() + " Structure ";
+			}
+			catch(Exception exc)
+			{
+				System.out.println(exc.toString());
+			}
+			System.out.println("Isomorphism Check...");
+//			result.removeIsomorphism();
+//			result.sort();
+			System.out.println("Isomorphism Check done");                
+
+			for(int f = 0;f < result.structures.size();f++)
+			{
+				title = "<html><b>Score " + ((ScoreSummary)result.scoreSummaries.elementAt(f)).score + ": </b>";
+
+				title += ((ScoreSummary)result.scoreSummaries.elementAt(f)).description + "</html>";
+				jmdPanel = new JMDrawPanel();
+				jmdPanel.setJMDraw(new JMDraw(ChemFileUtils.readMDLMolFile(new BufferedReader(new StringReader((String)result.structures.elementAt(f))))));
+				jmdPanel.setPreferredSize(new Dimension(300,200));
+				jmdPanel.setToolTipText(title);
+				jmdPanel.getJMDraw().draw();
+				sdf.addStructure(jmdPanel, "Score " + ((ScoreSummary)result.scoreSummaries.elementAt(f)).score);
+			}
+		}
+
+	}
+
+
+}
+
+
+
+

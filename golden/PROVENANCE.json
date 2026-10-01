@@ -1,0 +1,75 @@
+{
+ "legacySource": {
+  "files": 147,
+  "sha256": "aa39651502a3e43d275845583a2dfe76ee93858ff8342e16320d6519d4a3aefc",
+  "path": "legacy/runnable/src"
+ },
+ "legacyClasses": {
+  "files": 211,
+  "sha256": "0fcdfc44e3fb2c29ced950ff04f7f3ae878538b9fe7b70995f17a2b1960355f9",
+  "path": "legacy/harness/legacy-classes",
+  "note": "compiled from legacy/runnable/src by legacy/harness/build.sh"
+ },
+ "originalJars": {
+  "aelfred.jar": "06fa1d7ec75ba4a0732733fb746f3f3fad675482beaf5817155142865415b3fa",
+  "cml.jar": "c447c0a86fd1becd0000742c432e51505f67d43e3ae08da7cf2c2231d3d8c9f8",
+  "compchem.jar": "908b597864a7cfb73b06a00b37249190e22e3ac46faaa14b9c142a35783571dd",
+  "jaxp.jar": "21c8f6f18e08a6f521a9868d371c3ee78c5ca3914951782c732604a3ff7f13b0",
+  "jfreechart.jar": "60df8796e4384ad82387245ffc3d9784fbefdaff8e8aed7ced44f35abff27c9d",
+  "jmdraw.jar": "8ccd900c79723a9c85a56b0c8d3fa8472d0f23274663c49b39836e1833a72017",
+  "junit.jar": "967bdd34458c49238a8582feea0cf6938088ead08d40a71350e3493fb9d9ece9",
+  "log4j-core.jar": "0e40a74639ad4ffe9c066696a221dda505d36c59fc9bd4c56625da1c696d6b0c",
+  "log4j.jar": "4e148a5018f7d1366680f2e8843222b24ad2752f4594eeeb4617d5ef2fced555",
+  "parser.jar": "3b1361ff258a12eb326f8cda2e660143b6a3078d5336a202c86e0106fc6874c9",
+  "sax.jar": "36ce9dd9597ea47a5413e4c298bd2c506796cbece07da02da13ac6c223d72851",
+  "vecmath1.1-1.12.jar": "811ca68b231f95a26bf95f6bb302d63cb0b21616adbfb4bd40a9111c8febcad3"
+ },
+ "datasets": {
+  "Hyperaspine.sml": "b1545575d63e3727cc2607b9511104280d0887036ba99eb0bf1f34636127fc9a",
+  "bn-ye1.sml": "cea1f84a692e9776fb42671e19981f42257080cb436039ec1df6b8da37fb4de2",
+  "eupatorio.sml": "58272f91429dc39f22084f276ba0ec3075a691b685e856f8c58fa3b28c37c6ca",
+  "eurabidiol.sml": "a7a26a62d3c64d6dba58ef725c72cc6c0f8343d4268a52c7d6c3240cc823b83b",
+  "monochaetin.sml": "7e81cd85a40bcab9fd52293497f5f70eca20a95f14ef2d63e91eadd3f421e704",
+  "narelin.sml": "e3de3d2b10650933c587a8a017360442ac8fab3dacafa8059869de93872e035f",
+  "pinene.sml": "5f2bbe7235a91c067bbbef3e153a236db84049e00cd78cc6607e12bee48e5e44",
+  "polycarpol.sml": "710de1188631056a1d2aab458c510b7c3052ffb06172861c25cda28d80f98913",
+  "preconen.sml": "0b75b518c21adb3ff782eb7adb9f3e296deb966af4b2ba0bded98dea33cc4ccc",
+  "triterpen.sml": "4adf96034edc4907597026cfb4cd97e846d8e769533b9985860a362e9263491a"
+ },
+ "harnessSource": {
+  "files": 4,
+  "sha256": "f100762092b2f5d102662c5ece0edab8408aca071e0d8cd4070f7e3f4fa3f3b7",
+  "path": "legacy/harness/src"
+ },
+ "harnessClasses": {
+  "files": 17,
+  "sha256": "89da52546dd6a392a56737d450c54e6407e09e97a8b4b30a6c3e7936f607e945",
+  "path": "legacy/harness/classes"
+ },
+ "harnessScripts": {
+  "build.sh": "994f799e78d69c78141e928f7f85bd19ed71e469ea1cf1d846245400afff572a",
+  "gm.sh": "7bc977f5e8fea1d06d0309531e6278c7cee636e28f61d01623a95e4706362ce3",
+  "run.sh": "8428c1f2a23ca9381a483bc519bacd40be6f60c88b59c261247f1d33cd3864ea",
+  "summarize.py": "65adab043ff51a766157278b4e047f90bf5ec7bca3b5c5b3f1416e77d7f92cb0",
+  "provenance.py": "f34bb2c3e0047291fad11925944da2b28cbca52d40db6a9b79f9c3134d3ac4a2",
+  "references.tsv": "c73aa0a94183a7606a43950a4d3b96e3c1b9748d8f946d64c131b4f3ef762a32"
+ },
+ "java": [
+  "openjdk version \"25.0.2\" 2026-01-20",
+  "OpenJDK Runtime Environment Homebrew (build 25.0.2)",
+  "OpenJDK 64-Bit Server VM Homebrew (build 25.0.2, mixed mode, sharing)"
+ ],
+ "parameters": {
+  "STAGES": "echo scores ref traj full",
+  "DATASETS": "Hyperaspine bn-ye1 eupatorio eurabidiol monochaetin narelin pinene polycarpol preconen triterpen polycarpol@hblock",
+  "SEEDS": "1 2 3",
+  "STEPS": "5000",
+  "TRAJ_PROFILES": "gui paper",
+  "EXTRA_TRAJ": "pinene eurabidiol",
+  "EXTRA_SEEDS": "4 5 6 7 8 9 10",
+  "FULL_PROFILES": "gui paper",
+  "VARIANT_PROFILES": "paper",
+  "MANUAL_FULL": "pinene preconen eurabidiol",
+  "ITER_CAP": "5000000"
+ }
+}

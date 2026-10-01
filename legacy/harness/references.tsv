@@ -1,0 +1,12 @@
+# Reference structures for golden/references (see golden/FORMAT.md, section (e)).
+# Columns (TAB-separated): key  name  Kekule-SMILES  status  source
+#   status "literature": constitution of the named natural product; "inferred": derived by the harness author from the
+#   dataset's own NMR data only (no literature identification found) - use as a consistency check, not as ground truth.
+# Stereochemistry is irrelevant (SENECA works on constitutions) and omitted.
+pinene	alpha-pinene	CC1=CCC2CC1C2(C)C	literature	PubChem CID 6654; 13C shifts of the file match alpha-pinene
+preconen	precocene II (6,7-dimethoxy-2,2-dimethyl-2H-chromene)	CC1(C=CC2=CC(=C(C=C2O1)OC)OC)C	literature	PubChem CID 12565
+eupatorio	eupatoriochromene (6-acetyl-7-hydroxy-2,2-dimethyl-2H-chromene)	CC(=O)C1=C(C=C2C(=C1)C=CC(O2)(C)C)O	literature	PubChem CID 100768
+monochaetin	monochaetin	CCC(C)C(=O)C1C2C3=COC(=CC3=CC(=O)C2(OC1=O)C)C	literature	PubChem CID 101324908
+narelin	nareline	CC=C1C2CC3C4=NC5=CC=CC=C5C4(C2C(=O)OC)C6C1N3OC6O	literature	PubChem CID 6443592 (file title NARELIN.COL)
+polycarpol	polycarpol (lanosta-7,9(11),24-triene-3beta,15alpha-diol)	CC(CCC=C(C)C)C1CC(C2(C1(CC=C3C2=CCC4C3(CCC(C4(C)C)O)C)C)C)O	literature	PubChem CID 181278; identity of polycarpol as this diol: Unonopsis guatterioides bark (Annonaceae) literature
+Hyperaspine	hyperaspine	CCCCCC1CC(CC2N1COC(C2)C)OC(=O)C3=CC=CN3	literature	PubChem CID 11244548
