@@ -58,6 +58,20 @@ public final class SenecaDataset {
         this.name = name;
     }
 
+    /**
+     * "File &gt; New Dataset" of the application (feature-inventory F-20 with the D10 fix,
+     * docs/port/gui-design.md): legacy only called {@code new SenecaDataset(name)}, so the new dataset had
+     * no judges and no annealing schedule and "Start" failed. The port also calls {@link #init()} (the 7
+     * disabled judges, as after reading a file) and adds one default {@link AnnealingSchedule}
+     * (as "New -&gt;" in the schedule editor). No formula, no atoms.
+     */
+    public static SenecaDataset newDataset(String name) {
+        SenecaDataset sd = new SenecaDataset(name);
+        sd.init();
+        sd.annealingSchedules.add(new AnnealingSchedule());
+        return sd;
+    }
+
     public String getName() {
         return name;
     }

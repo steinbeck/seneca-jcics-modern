@@ -62,6 +62,8 @@ public final class HMBCAssigner extends SpectrumAssigner {
     @Override
     public boolean assign() {
         HeavyAtom[] nodes = ds.setOfNodes;
+        // DV-46: a dataset without atoms ("New Dataset" before a formula is set); legacy NullPointerException
+        if (nodes == null && !compat.strict()) return false;
         for (HeavyAtom a : nodes) {
             if (a.symbol.equals("C") && a.shift13C == null) return false;
         }

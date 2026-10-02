@@ -129,6 +129,21 @@ public final class NMRSpectrum {
         fireChange();
     }
 
+    /**
+     * Gives a spectrum without axes the axes {@code nuclei} (application, DEFAULT; gui-design.md DV-85).
+     * The SpecML reader leaves a spectrum without signals at dim 0 / nucleus [] (no {@code axisinfo} is
+     * written for it), so "Add Signal" and "Paste WinNMR pp" in the 2001 GUI produced signals without
+     * shifts there. The spectrum tables call this, with the slot's default nuclei, before they add the
+     * first signal. Changes nothing (returns false) if the spectrum has axes or signals.
+     */
+    public boolean ensureAxes(String[] nuclei) {
+        if (dim != 0 || !signals.isEmpty() || nuclei == null || nuclei.length == 0) return false;
+        this.nucleus = nuclei.clone();
+        this.dim = nuclei.length;
+        fireChange();
+        return true;
+    }
+
     public void addChangeListener(Runnable l) {
         listeners.add(l);
     }

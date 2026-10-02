@@ -86,6 +86,28 @@ public final class EchoRecords {
         return out;
     }
 
+    /**
+     * The configured-stage records of {@code sd} in echo order and format: {@code atoms}, the 7
+     * {@code spectrum} records and {@code schedules} (stage {@code configured_<profile>}), then the
+     * {@code judges} handed to the generator by {@code RunInput.fromDataset(sd, compat)} and the
+     * {@code generatorInput} record. Used to compare a dataset configured through the GUI with the one
+     * {@link GuiRecipe#prepare} produces (and, for STRICT, with the echo file). Like "Start as selected"
+     * it calls {@code calcMaxScore()} on the dataset's enabled judges.
+     */
+    public static List<String> configuredRecords(SenecaDataset sd, Profile profile, LegacyCompat compat) {
+        String st = "configured_" + profile.key;
+        List<String> out = new ArrayList<>();
+        out.add(atomsRecord(st, sd.setOfNodes).toString());
+        for (SpectrumSlot slot : SpectrumSlot.values()) out.add(spectrumRecord(st, slot, sd.spectrum(slot)).toString());
+        out.add(schedulesRecord(st, sd.annealingSchedules).toString());
+        RunInput go = RunInput.fromDataset(sd, compat);
+        out.add(judgesRecord(st, go.judges(), true).toString());
+        out.add(Json.obj().put("t", "generatorInput").put("profile", profile.key)
+                .put("enabled", Json.strings(GuiRecipe.enabledJudges(sd)))
+                .put("maxScore", generatorMaxScore(go.judges())).toString());
+        return out;
+    }
+
     static Json atomsRecord(String stage, HeavyAtom[] atoms) {
         Json arr = Json.arr();
         int hSum = 0;

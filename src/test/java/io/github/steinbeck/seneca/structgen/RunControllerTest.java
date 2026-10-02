@@ -115,6 +115,17 @@ class RunControllerTest {
         assertThrows(IllegalArgumentException.class, () -> rc.stop(slots.get(0)));
     }
 
+    /** 2001 {@code "local" + sgServerProcesses.size()}: after "Clear Server List" the next slot is local0. */
+    @Test
+    void slotIdsRestartAfterClear() {
+        RunController rc = new RunController();
+        rc.addSlot();
+        rc.addSlot();
+        rc.clear();
+        assertEquals("local0", rc.addSlot().id());
+        assertEquals("local1", rc.addSlot().id());
+    }
+
     @Test
     void stopResetAndRestart() throws Exception {
         RunController rc = new RunController();

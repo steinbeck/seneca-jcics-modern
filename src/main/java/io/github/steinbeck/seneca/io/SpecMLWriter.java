@@ -31,7 +31,9 @@ import io.github.steinbeck.seneca.model.SpectrumSlot;
  *       {@code <formula>}; the 2001 reader ignores unknown elements;</li>
  *   <li>text and attribute values are XML-escaped ({@code & < > "}), so names such as "A&amp;B" no
  *       longer produce an unreadable file;</li>
- *   <li>a dataset without atoms is written without a molecule block instead of throwing.</li>
+ *   <li>a dataset without atoms is written without a molecule block instead of throwing;</li>
+ *   <li>a spectrum without solvent or calibration standard gets empty {@code <solvent>} and
+ *       {@code <standard>} elements (2001: the text "null", which read back as the solvent "null").</li>
  * </ul>
  * Reading of existing (2001) files is unchanged in both modes. The legacy writer's static
  * {@code indentLevel} (not reentrant, left wrong after an exception) is not reproduced.
@@ -60,6 +62,11 @@ public final class SpecMLWriter {
         }
 
         /** Value text: verbatim in STRICT, XML-escaped in DEFAULT. */
+        /** STRICT: like {@link #v} ("null" for null, which reads back as the text "null"); DEFAULT: empty for null. */
+        private String optional(Object o) {
+            return o == null && !strict ? "" : v(o);
+        }
+
         private String v(Object o) {
             String s = String.valueOf(o);
             if (strict) return s;
@@ -150,8 +157,8 @@ public final class SpecMLWriter {
             cml.append(indent()).append("<dimension>").append(s.dim).append("</dimension>\n");
             cml.append(indent()).append("<type>").append(v(s.specType)).append("</type>\n");
             cml.append(indent()).append("<frequency unit=\"MHz\">").append(s.getSpectrometerFrequency()).append("</frequency>\n");
-            cml.append(indent()).append("<solvent>").append(v(s.getSolvent())).append("</solvent>\n");
-            cml.append(indent()).append("<standard role=\"calibration\">").append(v(s.getStandard())).append("</standard>\n");
+            cml.append(indent()).append("<solvent>").append(optional(s.getSolvent())).append("</solvent>\n");
+            cml.append(indent()).append("<standard role=\"calibration\">").append(optional(s.getStandard())).append("</standard>\n");
             if (s.size() == 0) {
                 indentLevel--;
                 cml.append(indent()).append("</spectruminfo>\n");

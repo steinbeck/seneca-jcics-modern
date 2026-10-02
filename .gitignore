@@ -5,3 +5,6 @@ target/
 /build/
 *.app
 target-*/
+# the built application (scripts/build-app.sh); only the README is versioned
+/dist/*
+!/dist/README.md

@@ -13,7 +13,9 @@ import io.github.steinbeck.seneca.judges.ScoreSummary;
  * The GUI calls only this class; no Swing here.
  *
  * <ul>
- *   <li>{@link #addSlot()} = "Start local server" (F-61).</li>
+ *   <li>{@link #addSlot()} = "Start local server" (F-61): ids {@code local0}, {@code local1}, ... As in 2001
+ *       ({@code "local" + sgServerProcesses.size()}), the numbering restarts at {@code local0} after
+ *       {@link #clear}.</li>
  *   <li>{@link #start} = "Start as selected" for one slot (F-64): stops and joins a run already active
  *       in that slot first (legacy orphaned it, D15), then runs {@link StochasticGenerator#run()} on a new
  *       daemon platform thread named {@code "seneca-" + slot.id()}. The caller builds the input with
@@ -43,7 +45,7 @@ public final class RunController {
     private final List<RunListener> listeners = new CopyOnWriteArrayList<>();
     private final AtomicInteger nextId = new AtomicInteger();
 
-    public RunSlot addSlot() {
+    public synchronized RunSlot addSlot() {
         RunSlot s = new RunSlot("local" + nextId.getAndIncrement());
         slots.add(s);
         return s;
@@ -93,7 +95,10 @@ public final class RunController {
                 s.clearRun();
             }
         }
-        slots.clear();
+        synchronized (this) {
+            slots.clear();
+            nextId.set(0);          // 2001: the next "Start local server" is local0 again
+        }
     }
 
     /**

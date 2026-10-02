@@ -32,8 +32,11 @@
     <build.dir>${project.basedir}/target</build.dir>
     <cdk.version>2.13</cdk.version>
     <junit.version>5.12.2</junit.version>
+    <jfreechart.version>1.5.6</jfreechart.version>
     <!-- JUnit 5 tag expression excluded by default; -Pslow clears it -->
     <seneca.excludedGroups>slow</seneca.excludedGroups>
+    <!-- GUI tests: true = headless (default), false = native look and feel in hidden windows -->
+    <seneca.headless>true</seneca.headless>
     <seneca.legacy.jars>${project.basedir}/legacy/original/jar</seneca.legacy.jars>
   </properties>
 
@@ -52,8 +55,8 @@
   <dependencies>
     <!-- CDK: only what the core needs. Molecule model/graph (cdk-core), data classes (cdk-silent),
          MDL import (cdk-ctab), SMILES for reference structures (cdk-smiles), VF2 constitution test
-         for the reference check of the CLI (cdk-isomorphism). Depiction (cdk-depict, cdk-sdg) is
-         added in the GUI phase. -->
+         for the reference check of the CLI (cdk-isomorphism). Depiction (cdk-depict, cdk-sdg): GUI,
+         below. -->
     <dependency>
       <groupId>org.openscience.cdk</groupId>
       <artifactId>cdk-core</artifactId>
@@ -80,18 +83,42 @@
       <version>${cdk.version}</version>
     </dependency>
 
+    <!-- GUI (package io.github.steinbeck.seneca.app only; docs/port/gui-design.md): structure layout
+         (cdk-sdg, replaces jmdraw's layout) and rendering (cdk-depict, replaces jmdraw's
+         RenderingEngine); the annealing chart (JFreeChart 1.5, replaces com.jrefinery.chart).
+         Logging uses java.util.logging from the JDK (no dependency; log4j 1.x is not used). -->
+    <dependency>
+      <groupId>org.openscience.cdk</groupId>
+      <artifactId>cdk-sdg</artifactId>
+      <version>${cdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openscience.cdk</groupId>
+      <artifactId>cdk-depict</artifactId>
+      <version>${cdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jfree</groupId>
+      <artifactId>jfreechart</artifactId>
+      <version>${jfreechart.version}</version>
+    </dependency>
+
     <!-- tests -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
-    <!-- CDK as test oracle where it is proven identical (HOSE 1-sphere code, Bremser table) -->
+    <!-- CDK as test oracle where it is proven identical (HOSE 1-sphere code, Bremser table).
+         cdk-standard is also a compile dependency of cdk-ctab, cdk-smiles, cdk-isomorphism, cdk-sdg and
+         cdk-depict (e.g. GeometryUtil in the depiction): scope "runtime" keeps it on the runtime classpath
+         of the application (scripts/build-app.sh) while main code still cannot compile against it. Scope
+         "test" here demoted it and the packaged application failed to draw a structure. -->
     <dependency>
       <groupId>org.openscience.cdk</groupId>
       <artifactId>cdk-standard</artifactId>
       <version>${cdk.version}</version>
-      <scope>test</scope>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.openscience.cdk</groupId>
@@ -122,13 +149,24 @@
         <configuration>
           <excludedGroups>${seneca.excludedGroups}</excludedGroups>
           <!-- deep recursion in legacy PathUtils.nextSphere / ring finder on large structures; keep the
-               messages of hot implicit exceptions (legacy ring-finder crash in oracle tests) -->
-          <argLine>-Xss16m -Djava.awt.headless=true -XX:-OmitStackTraceInFastThrow</argLine>
+               messages of hot implicit exceptions (legacy ring-finder crash in oracle tests).
+               GUI tests run headless (Metal renderings); -Dseneca.headless=false renders the GUI tests'
+               screenshots in the native look and feel through hidden, never shown windows
+               (docs/port/gui-design.md); apple.awt.UIElement keeps such a JVM out of the Dock.
+               user.home = the build directory: the 2001 code run in-process by the oracle tests configures
+               log4j onto ${user.home}/seneca.log etc., which must never be the user's real files.
+               enable-native-access: app.MacActivity calls the Objective-C runtime (App Nap) through the
+               Foreign Function API; without the option the JVM prints a warning. -->
+          <argLine>-Xss16m --enable-native-access=ALL-UNNAMED -Djava.awt.headless=${seneca.headless} -Dapple.awt.UIElement=true -XX:-OmitStackTraceInFastThrow -Duser.home=${project.build.directory}</argLine>
           <systemPropertyVariables>
             <seneca.repo>${project.basedir}</seneca.repo>
             <seneca.golden>${project.basedir}/golden</seneca.golden>
             <seneca.sml>${project.basedir}/legacy/original/sml</seneca.sml>
+            <!-- the application's example datasets (File > Open > Example Dataset; app.Examples) -->
+            <seneca.examples>${project.basedir}/legacy/original/sml</seneca.examples>
             <seneca.references>${project.basedir}/legacy/harness/references.tsv</seneca.references>
+            <!-- offscreen renderings of the GUI tests (docs/port/gui-design.md, testing) -->
+            <seneca.guishots>${project.build.directory}/gui-shots</seneca.guishots>
           </systemPropertyVariables>
           <trimStackTrace>false</trimStackTrace>
           <!-- readable names of dynamic tests (dataset key / run id) in reports -->
@@ -154,6 +192,8 @@
           <archive>
             <manifest>
               <mainClass>io.github.steinbeck.seneca.cli.Main</mainClass>
+              <!-- Implementation-Version: shown in the application's About box -->
+              <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
             </manifest>
           </archive>
         </configuration>

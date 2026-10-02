@@ -308,6 +308,21 @@ class SpecMLTest {
         })).toList();
     }
 
+    /** DV-08: a spectrum without solvent or standard keeps null through a DEFAULT save/load (2001: "null"). */
+    @Test
+    void missingSolventSurvivesTheRoundTrip() throws IOException {
+        SenecaDataset sd = parse(SMALL);
+        io.github.steinbeck.seneca.model.NMRSpectrum sp = sd.spectrum(io.github.steinbeck.seneca.model.SpectrumSlot.CARBON1D);
+        org.junit.jupiter.api.Assumptions.assumeTrue(sp != null, "SMALL has a carbon spectrum");
+        sp.setSolvent(null);
+        sp.setStandard(null);
+        String def = SpecMLWriter.write(sd, LegacyCompat.DEFAULT);
+        assertTrue(def.contains("<solvent></solvent>"), def);
+        io.github.steinbeck.seneca.model.NMRSpectrum back = parse(def).spectrum(io.github.steinbeck.seneca.model.SpectrumSlot.CARBON1D);
+        assertNull(back.getSolvent());
+        assertTrue(SpecMLWriter.write(sd, LegacyCompat.STRICT).contains("<solvent>null</solvent>"), "STRICT as 2001");
+    }
+
     @TestFactory
     List<DynamicTest> legacyFilesReadWriteReadIsStable() {
         return GoldenFiles.keys().stream().filter(k -> !k.contains("@")).map(key -> DynamicTest.dynamicTest(key, () -> {

@@ -57,7 +57,7 @@ Base package `io.github.steinbeck.seneca` (legacy packages are `seneca`, `compch
 | `.structgen` | `StochasticGenerator`, `SingleRandomStructureGenerator`, `AnnealingLog`, `StructureGeneratorResult`, run API (`RunInput`, `RunOptions`, `RunRandom`, `RunResult`, `RunStatus`, `RunController`, `RunSlot`, `RunListener`, `StepObserver`, `StepContext`, `EngineLog`, `FileEngineLog`), `StartStructureFeasibility` (DV-60) | C |
 | `.golden` | golden-format emitters shared by CLI and tests: `Json`, `Hashes` (architect), `EchoRecords` (B), `ScoreRecords` (A), `TrajectoryRecords`, `RunRecords`, `RunSupport`, `ReferenceCheck`, `ReferenceRecords` (C) | mixed |
 | `.cli` | `Main` | C |
-| `.app` | Swing GUI, later phase (only package allowed to use `java.awt`/`javax.swing`) | later |
+| `.app` | Swing GUI (only package allowed to use `java.awt`/`javax.swing`); design and work split: docs/port/gui-design.md | GUI |
 
 Allowed dependencies (acyclic): `chem` ← `judges` ← `model` ← {`io`, `config`} ; `structgen` → `model`,
 `judges`, `chem` ; `golden` → all of the above ; `cli` → all ; `app` → all.
@@ -313,7 +313,9 @@ check: it compares like `compare.sh`, skips `PROVENANCE.json`, compares differin
 
 `key` is a golden dataset key (`polycarpol@hblock` reads `polycarpol.sml`); golden commands default to
 STRICT. Exit codes 0 ok, 1 a `record` job failed, 2 usage, 4 I/O. Packaging: `mvn package` builds a jar with
-`Main` as main class (dependencies on the classpath; a shaded/jlink'ed app comes with the GUI phase).
+`Main` as main class (dependencies on the classpath). The macOS application `dist/Seneca.app` (jlink runtime,
+jpackage app image, main class `app.SenecaApp`) is built by `scripts/build-app.sh`; docs/port/gui-design.md
+section 15.
 
 ## 11. Work split
 
