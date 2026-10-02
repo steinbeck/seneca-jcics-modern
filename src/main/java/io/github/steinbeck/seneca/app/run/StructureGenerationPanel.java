@@ -329,6 +329,10 @@ public final class StructureGenerationPanel extends JPanel {
             startFailed(e.getMessage());
             return;
         }
+        if (in.maxScore() == 0) {                                   // DV-93: nothing to score, the search would run blind
+            startFailed(RunInput.NO_SCORE);
+            return;
+        }
         pending.addAll(sel);
         app.control(() -> {
             List<RunSlot> started = new ArrayList<>();

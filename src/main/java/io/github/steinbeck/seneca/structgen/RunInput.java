@@ -75,6 +75,23 @@ public final class RunInput {
         return new RunInput(AtomSets.cloneAtomSet(nodes), JudgeSet.deepCopy(sd.judges), sched, sd.getName());
     }
 
+    /**
+     * The maximum score a run of this input can reach: what the generator computes at its start
+     * ({@code JudgeSet.maxScore()}: sum over enabled judges, -1 if one of them has no maximum).
+     */
+    public int maxScore() {
+        return new JudgeSet(new ArrayList<>(judges)).maxScore();
+    }
+
+    /**
+     * Why the app refuses to start an input whose {@link #maxScore()} is 0 (DV-93; legacy starts it:
+     * every score is 0, start_kT = -0.0, every new structure is logged as a new best).
+     */
+    public static final String NO_SCORE = "The maximum achievable score is 0: no enabled judge has anything to score, "
+            + "so the search would run blind.\n"
+            + "First assign the spectra (Atom Properties: Autoassignment), "
+            + "then configure the judges (Judges: Autoconfigure Judge).";
+
     /** A judge whose {@code calcMaxScore()} throws because its configuration was never created. */
     static boolean unconfigured(Judge j) {
         return switch (j) {

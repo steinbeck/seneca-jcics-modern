@@ -19,8 +19,13 @@ import io.github.steinbeck.seneca.app.GuiTestSupport;
 import io.github.steinbeck.seneca.app.GuiTestSupport.TestApp;
 import io.github.steinbeck.seneca.app.TestHooks;
 import io.github.steinbeck.seneca.config.GuiRecipe;
+import io.github.steinbeck.seneca.config.JudgeConfiguration;
 import io.github.steinbeck.seneca.config.Profile;
+import io.github.steinbeck.seneca.io.SpecMLReader;
+import io.github.steinbeck.seneca.judges.HOSECodeJudge;
+import io.github.steinbeck.seneca.judges.Judge;
 import io.github.steinbeck.seneca.model.SenecaDataset;
+import io.github.steinbeck.seneca.structgen.RunInput;
 import io.github.steinbeck.seneca.structgen.RunResult;
 import io.github.steinbeck.seneca.structgen.RunSlot;
 import io.github.steinbeck.seneca.structgen.RunStatus;
@@ -157,6 +162,46 @@ class RunControlTest {
             fx2.press(ComponentNames.RUN_START);
             fx2.settle();
             assertEquals(shown + 1, t.ui.shown.size());
+        }
+    }
+
+    /**
+     * DV-93: a dataset whose enabled judges can score nothing (maximum score 0) is not started. Reported
+     * by the user: monochaetin opened, "Autoconfigure Judge" pressed without "Autoassignment" first,
+     * Start: every score 0, start_kT = -0.0, every new structure logged as new best (hundreds of MB).
+     */
+    @Test
+    void startRefusesADatasetWhoseMaximumScoreIsZero() throws Exception {
+        try (TestApp t = GuiTestSupport.newApp("runs-zero-max", TestHooks.none())) {
+            // as read: no shifts, no H counts; HOSECodeJudge autoconfigured without Autoassignment -> max 0
+            SenecaDataset sd = SpecMLReader.read(GuiTestSupport.sml("monochaetin"));
+            for (Judge j : sd.judges)
+                if (j instanceof HOSECodeJudge) JudgeConfiguration.autoconfigure(sd, j, t.app.compat);
+            RunFixture fx = RunFixture.open(t, sd);
+            fx.addSlots(1);
+            fx.select(0);
+            int shown = t.ui.shown.size();
+            fx.press(ComponentNames.RUN_START);
+            fx.settle();
+            assertEquals(shown + 1, t.ui.shown.size(), "one message");
+            assertEquals("Start as selected", t.ui.lastShown().title());
+            assertEquals(RunInput.NO_SCORE, t.ui.lastShown().message());
+            assertEquals(JOptionPane.ERROR_MESSAGE, t.ui.lastShown().pane().getMessageType());
+            assertFalse(fx.slot(0).hasRun());
+            shot(t.ui.lastShown().pane(), "runs-dialog-zero-max-score");
+
+            // the same dataset after Autoassignment + Autoconfigure (the "gui" recipe) starts normally
+            SenecaDataset ok = GuiRecipe.prepare(GuiTestSupport.sml("monochaetin"), "monochaetin", Profile.GUI, t.app.compat).sd;
+            RunFixture fx2 = RunFixture.open(t, ok);
+            fx2.addSlots(1);
+            fx2.select(0);
+            shown = t.ui.shown.size();
+            fx2.press(ComponentNames.RUN_START);
+            fx2.settle();
+            assertTrue(GuiTestSupport.waitFor(() -> fx2.slot(0).hasRun(), 60_000), "configured dataset starts");
+            assertEquals(shown, t.ui.shown.size(), "no message");
+            fx2.press(ComponentNames.RUN_STOP);
+            fx2.awaitResult(0);
         }
     }
 }

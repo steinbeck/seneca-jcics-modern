@@ -174,6 +174,13 @@ class E2eAppVerifyTest {
             press(f, ComponentNames.RUN_START);
             settle(t);
             RunSlot slot = f.runs().slots().get(row);
+            if (golden.record.lng("maxScore") == 0) {
+                // DV-93: the app refuses inputs that can score nothing (bn-ye1 has no shifts); the golden
+                // run itself stays covered by the engine tests (RunsGoldenTest, DefaultModeGoldenTest)
+                assertEquals(io.github.steinbeck.seneca.structgen.RunInput.NO_SCORE, t.ui.lastShown().message());
+                assertFalse(slot.hasRun(), "a run with maximum score 0 must not start");
+                return;
+            }
             assertEquals(Long.valueOf(c.seed()), t.app.runOptions(slot).seed());
             RunResult r = await(slot, 900_000);
             for (int i = 0; i < row; i++) assertFalse(f.runs().slots().get(i).hasRun(), "unselected row ran");

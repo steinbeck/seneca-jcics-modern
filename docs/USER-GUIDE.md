@@ -48,6 +48,11 @@ In jedem Unterreiter:
 - **Activate this Judge?** schaltet den Judge ein oder aus. Ein 2D-Judge ohne passendes Spektrum muss aus sein.
 - **Report Judgeconfig** zeigt die Konfiguration eines 2D-Judges als Text.
 
+**Die Reihenfolge zählt:** erst Autoassignment, dann Autoconfigure. Ohne zugeordnete Verschiebungen hat
+kein Judge etwas zu bewerten, die erreichbare Höchstpunktzahl ist 0, und die Suche liefe blind. In diesem
+Fall verweigert SENECA den Start mit einem Hinweis (2001 lief so ein Lauf los und schrieb jede Struktur ins
+Protokoll).
+
 Die Judge-Konfiguration wird beim Speichern **nicht** mit abgelegt (wie 2001). Nach dem Öffnen also
 Autoconfigure wiederholen.
 
