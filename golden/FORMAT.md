@@ -62,6 +62,9 @@ file, see "pinene.jsx").
   on Java's number formatting (`Double.toString`, e.g. the HOSECode judge's mean deviation, which
   is `NaN` for bn-ye1). A port that formats differently must compare them loosely or skip them;
   all numeric fields carry the same information exactly.
+- `crash.at` (class, method and line of the top stack frame of a crash, e.g.
+  `compchem.SetOfRingsFinder.breakBond:302`) names legacy code. A port reports its own frame and
+  compares every other field of a crash record exactly (the Java port: docs/port/DEVIATIONS.md DV-30).
 
 ## The GUI recipe (how judges were configured)
 

@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SENECA (J. Chem. Inf. Comput. Sci. 2001, 41, 1500) ported to JDK 25 + CDK 2.13.
+  Design: docs/port/design.md. Deviations from the 2001 program: docs/port/DEVIATIONS.md.
+
+  Build directory: every agent/developer may use a private output directory,
+      mvn -Dbuild.dir=/abs/path/target-<name> test
+  (default: ./target). Tests read golden/ and legacy/ directly from the repository.
+
+  Test groups: tests tagged "slow" (complete golden runs with > 200,000 iterations) are excluded
+  by default; run them with -Pslow (or -Dseneca.excludedGroups=none).
+
+  Profile "oracle": adds src/test-oracle/java as test sources and puts the legacy classes
+  (legacy/runnable/classes, build them with legacy/runnable/build.sh) plus legacy/original/jar/*.jar
+  on the TEST classpath, for differential tests against the original compchem/SENECA code.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>io.github.steinbeck</groupId>
+  <artifactId>seneca</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+  <name>SENECA (2001 JCICS version, modern port)</name>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>25</maven.compiler.release>
+    <!-- overridable output directory: -Dbuild.dir=/abs/path -->
+    <build.dir>${project.basedir}/target</build.dir>
+    <cdk.version>2.13</cdk.version>
+    <junit.version>5.12.2</junit.version>
+    <!-- JUnit 5 tag expression excluded by default; -Pslow clears it -->
+    <seneca.excludedGroups>slow</seneca.excludedGroups>
+    <seneca.legacy.jars>${project.basedir}/legacy/original/jar</seneca.legacy.jars>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- CDK: only what the core needs. Molecule model/graph (cdk-core), data classes (cdk-silent),
+         MDL import (cdk-ctab), SMILES for reference structures (cdk-smiles), VF2 constitution test
+         for the reference check of the CLI (cdk-isomorphism). Depiction (cdk-depict, cdk-sdg) is
+         added in the GUI phase. -->
+    <dependency>
+      <groupId>org.openscience.cdk</groupId>
+      <artifactId>cdk-core</artifactId>
+      <version>${cdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openscience.cdk</groupId>
+      <artifactId>cdk-silent</artifactId>
+      <version>${cdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openscience.cdk</groupId>
+      <artifactId>cdk-ctab</artifactId>
+      <version>${cdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openscience.cdk</groupId>
+      <artifactId>cdk-smiles</artifactId>
+      <version>${cdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openscience.cdk</groupId>
+      <artifactId>cdk-isomorphism</artifactId>
+      <version>${cdk.version}</version>
+    </dependency>
+
+    <!-- tests -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- CDK as test oracle where it is proven identical (HOSE 1-sphere code, Bremser table) -->
+    <dependency>
+      <groupId>org.openscience.cdk</groupId>
+      <artifactId>cdk-standard</artifactId>
+      <version>${cdk.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.openscience.cdk</groupId>
+      <artifactId>cdk-extra</artifactId>
+      <version>${cdk.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <directory>${build.dir}</directory>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>25</release>
+          <compilerArgs>
+            <arg>-Xlint:all,-serial,-processing</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <excludedGroups>${seneca.excludedGroups}</excludedGroups>
+          <!-- deep recursion in legacy PathUtils.nextSphere / ring finder on large structures; keep the
+               messages of hot implicit exceptions (legacy ring-finder crash in oracle tests) -->
+          <argLine>-Xss16m -Djava.awt.headless=true -XX:-OmitStackTraceInFastThrow</argLine>
+          <systemPropertyVariables>
+            <seneca.repo>${project.basedir}</seneca.repo>
+            <seneca.golden>${project.basedir}/golden</seneca.golden>
+            <seneca.sml>${project.basedir}/legacy/original/sml</seneca.sml>
+            <seneca.references>${project.basedir}/legacy/harness/references.tsv</seneca.references>
+          </systemPropertyVariables>
+          <trimStackTrace>false</trimStackTrace>
+          <!-- readable names of dynamic tests (dataset key / run id) in reports -->
+          <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
+            <usePhrasedFileName>false</usePhrasedFileName>
+            <usePhrasedTestSuiteClassName>true</usePhrasedTestSuiteClassName>
+            <usePhrasedTestCaseClassName>true</usePhrasedTestCaseClassName>
+            <usePhrasedTestCaseMethodName>true</usePhrasedTestCaseMethodName>
+          </statelessTestsetReporter>
+          <consoleOutputReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5ConsoleOutputReporter">
+            <usePhrasedFileName>false</usePhrasedFileName>
+          </consoleOutputReporter>
+          <statelessTestsetInfoReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoReporter">
+            <usePhrasedClassNameInRunning>true</usePhrasedClassNameInRunning>
+          </statelessTestsetInfoReporter>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.4.2</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>io.github.steinbeck.seneca.cli.Main</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <profile>
+      <id>slow</id>
+      <properties>
+        <seneca.excludedGroups>none</seneca.excludedGroups>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>oracle</id>
+      <!-- Differential tests against the original code. Prerequisite: legacy/runnable/build.sh
+           (writes legacy/runnable/classes). The legacy packages 'seneca' and 'compchem' do not
+           clash with io.github.steinbeck.seneca. The legacy jars are system-scope dependencies,
+           so they are formally also on the main compile classpath: PortHygieneTest fails if main
+           code imports a legacy package. -->
+      <dependencies>
+        <dependency>
+          <groupId>legacy.seneca</groupId>
+          <artifactId>compchem</artifactId>
+          <version>2001</version>
+          <scope>system</scope>
+          <systemPath>${seneca.legacy.jars}/compchem.jar</systemPath>
+        </dependency>
+        <dependency>
+          <groupId>legacy.seneca</groupId>
+          <artifactId>jmdraw</artifactId>
+          <version>2001</version>
+          <scope>system</scope>
+          <systemPath>${seneca.legacy.jars}/jmdraw.jar</systemPath>
+        </dependency>
+        <dependency>
+          <groupId>legacy.seneca</groupId>
+          <artifactId>log4j</artifactId>
+          <version>1.0.4</version>
+          <scope>system</scope>
+          <systemPath>${seneca.legacy.jars}/log4j.jar</systemPath>
+        </dependency>
+        <dependency>
+          <groupId>legacy.seneca</groupId>
+          <artifactId>log4j-core</artifactId>
+          <version>1.0.4</version>
+          <scope>system</scope>
+          <systemPath>${seneca.legacy.jars}/log4j-core.jar</systemPath>
+        </dependency>
+        <dependency>
+          <groupId>legacy.seneca</groupId>
+          <artifactId>jfreechart</artifactId>
+          <version>2001</version>
+          <scope>system</scope>
+          <systemPath>${seneca.legacy.jars}/jfreechart.jar</systemPath>
+        </dependency>
+        <dependency>
+          <groupId>legacy.seneca</groupId>
+          <artifactId>vecmath</artifactId>
+          <version>1.1</version>
+          <scope>system</scope>
+          <systemPath>${seneca.legacy.jars}/vecmath1.1-1.12.jar</systemPath>
+        </dependency>
+      </dependencies>
+      <build>
+        <plugins>
+          <plugin>
+            <!-- legacy/runnable/classes (packages seneca, jnt) are copied into the test output
+                 directory, which is on the test compile and test runtime classpath. (A system-scope
+                 dependency cannot point to a directory.) -->
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-resources-plugin</artifactId>
+            <version>3.3.1</version>
+            <executions>
+              <execution>
+                <id>copy-legacy-runnable-classes</id>
+                <phase>generate-test-resources</phase>
+                <goals>
+                  <goal>copy-resources</goal>
+                </goals>
+                <configuration>
+                  <outputDirectory>${project.build.testOutputDirectory}</outputDirectory>
+                  <resources>
+                    <resource>
+                      <directory>${project.basedir}/legacy/runnable/classes</directory>
+                      <includes>
+                        <include>seneca/**</include>
+                        <include>jnt/**</include>
+                      </includes>
+                    </resource>
+                  </resources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>3.6.0</version>
+            <executions>
+              <execution>
+                <id>add-oracle-test-sources</id>
+                <phase>generate-test-sources</phase>
+                <goals>
+                  <goal>add-test-source</goal>
+                </goals>
+                <configuration>
+                  <sources>
+                    <source>${project.basedir}/src/test-oracle/java</source>
+                  </sources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>
