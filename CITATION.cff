@@ -1,0 +1,99 @@
+cff-version: 1.2.0
+message: >-
+  If you use SENECA, please cite the original article (preferred-citation).
+  If it matters which program produced your results, please also cite this
+  port with its version.
+type: software
+title: "SENECA (2001 JCICS version, modern port)"
+abstract: >-
+  A faithful port of SENECA, the program for computer-assisted structure
+  elucidation (CASE) of organic compounds published in 2001, to Java 25 and
+  the Chemistry Development Kit (CDK) 2.13, with a Swing user interface
+  packaged as a macOS application. SENECA searches the constitutional isomers
+  of a molecular formula by simulated annealing and scores each candidate
+  structure against NMR data with a set of judges. The port reproduces the
+  results of the 2001 program, checked against a golden master recorded with
+  the original code; every deviation is documented.
+authors:
+  - family-names: Steinbeck
+    given-names: Christoph
+    orcid: "https://orcid.org/0000-0001-6966-0814"
+version: 1.0.0
+date-released: "2026-10-13"
+repository-code: "https://github.com/steinbeck/seneca-jcics-modern"
+url: "https://github.com/steinbeck/seneca-jcics-modern"
+license: Artistic-1.0
+keywords:
+  - computer-assisted structure elucidation
+  - CASE
+  - NMR spectroscopy
+  - simulated annealing
+  - structure generation
+  - cheminformatics
+  - Chemistry Development Kit
+preferred-citation:
+  type: article
+  authors:
+    - family-names: Steinbeck
+      given-names: Christoph
+      orcid: "https://orcid.org/0000-0001-6966-0814"
+      affiliation: "Max-Planck-Institut für Chemische Ökologie, Jena, Germany"
+  title: >-
+    SENECA: A Platform-Independent, Distributed, and Parallel System for
+    Computer-Assisted Structure Elucidation in Organic Chemistry
+  journal: "Journal of Chemical Information and Computer Sciences"
+  volume: 41
+  issue: "6"
+  start: 1500
+  end: 1507
+  year: 2001
+  doi: "10.1021/ci000407n"
+  publisher:
+    name: "American Chemical Society"
+references:
+  - type: software
+    title: "SENECA, JCICS publication version (archival snapshot of the 2001 source code)"
+    authors:
+      - family-names: Steinbeck
+        given-names: Christoph
+        orcid: "https://orcid.org/0000-0001-6966-0814"
+    repository-code: "https://github.com/steinbeck/seneca-jcics"
+  - type: article
+    authors:
+      - family-names: Willighagen
+        given-names: Egon L.
+      - family-names: Mayfield
+        given-names: John W.
+      - family-names: Alvarsson
+        given-names: Jonathan
+      - family-names: Berg
+        given-names: Arvid
+      - family-names: Carlsson
+        given-names: Lars
+      - family-names: Jeliazkova
+        given-names: Nina
+      - family-names: Kuhn
+        given-names: Stefan
+      - family-names: Pluskal
+        given-names: Tomáš
+      - family-names: Rojas-Chertó
+        given-names: Miquel
+      - family-names: Spjuth
+        given-names: Ola
+      - family-names: Torrance
+        given-names: Gilleain
+      - family-names: Evelo
+        given-names: Chris T.
+      - family-names: Guha
+        given-names: Rajarshi
+      - family-names: Steinbeck
+        given-names: Christoph
+    title: >-
+      The Chemistry Development Kit (CDK) v2.0: atom typing, depiction,
+      molecular formulas, and substructure searching
+    journal: "Journal of Cheminformatics"
+    volume: 9
+    issue: "1"
+    start: 33
+    year: 2017
+    doi: "10.1186/s13321-017-0220-4"

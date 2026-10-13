@@ -98,7 +98,12 @@ if [ "${SPEED_TEST:-1}" != 0 ]; then
         > "$SCRATCH/speed/cli.txt" 2>&1 || true
     wait_for "$SCRATCH/speed/report.txt" 600
     sleep 3
-    pkill -f "$BIN --smoke=$SCRATCH/speed" 2>/dev/null || true
+    if pgrep -f "$BIN --smoke=$SCRATCH/speed" > /dev/null; then
+        pkill -f "$BIN --smoke=$SCRATCH/speed" 2>/dev/null || true
+        sleep 2
+        # an app whose self-test timed out under load can ignore SIGTERM (seen with the run still going)
+        pkill -9 -f "$BIN --smoke=$SCRATCH/speed" 2>/dev/null || true
+    fi
     CLI_RATE="$(sed -nE 's/^result .* after ([0-9]+) iterations, ([0-9.]+) s$/\1 \2/p' "$SCRATCH/speed/cli.txt" | awk '{ printf "%d", $1 / $2 }')"
     APP_RATE="$(sed -n 's/^run.iterationsPerSecond=//p' "$SCRATCH/speed/report.txt" 2>/dev/null)"
     NAP="$(sed -n 's/^run.appNapSuspended=//p' "$SCRATCH/speed/report.txt" 2>/dev/null)"

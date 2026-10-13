@@ -161,5 +161,5 @@ Conclusion: apart from patches 1-4, the archived source is the source of the 200
 | Rebuilt, pinene, `Rng.seed(42)` twice | Byte-identical result lists (13 structures, best 2305/2400) |
 
 GUI startup was verified with an in-process probe (starts `Seneca.main`, lists frames,
-renders the frame to PNG), because screen capture is not permitted for the agent. Only
+renders the frame to PNG), because screen capture was not available in the build environment. Only
 expected console chatter appears (e.g. configurators printing themselves); no stack traces.

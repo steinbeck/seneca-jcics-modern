@@ -24,7 +24,7 @@ import io.github.steinbeck.seneca.app.ComponentNames;
  * where it is. The caret does not move the view ({@link DefaultCaret#NEVER_UPDATE}). 2001 opened the
  * tab at the top of the text.
  *
- * <p>Owner: G2 (docs/port/gui-design.md); skeleton by the GUI architect.
+ * <p>Design: docs/port/gui-design.md.
  */
 public final class LogbookPanel extends JPanel {
 

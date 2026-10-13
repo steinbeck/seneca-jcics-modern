@@ -5,12 +5,24 @@ SENECA sucht zu einer Summenformel und NMR-Daten die Konstitution, die am besten
 Publikationsversion von 2001, portiert auf Java 25 und CDK 2.13. Fenster, Menüs und Beschriftungen sind die
 von 2001 und daher englisch.
 
+Installation, ein vollständiges Beispiel Schritt für Schritt (polycarpol, mit Bildern) und das Bauen aus dem
+Quellcode beschreibt die englische [README.md](../README.md).
+
 ## 1. Starten
 
-- **Seneca.app**: Doppelklick auf `dist/Seneca.app` (gebaut mit `scripts/build-app.sh`, siehe `README.md`).
-  Ein Doppelklick auf eine `.sml`-Datei öffnet sie ebenfalls in SENECA.
-  Die App ist nur ad hoc signiert. Auf einem anderen Mac als dem, auf dem sie gebaut wurde, beim ersten
-  Start Rechtsklick ▸ Öffnen wählen.
+- **Seneca.app**: das Disk-Image `Seneca-<Version>-macOS-arm64.dmg` von der
+  [Release-Seite](https://github.com/steinbeck/seneca-jcics-modern/releases/latest) laden, öffnen und Seneca in
+  den Ordner Programme ziehen (nur Macs mit Apple-Chip). Selbst gebaut liegt die App in `dist/Seneca.app`
+  (`scripts/build-app.sh`, siehe [README.md](../README.md)). Ein Doppelklick auf eine `.sml`-Datei öffnet sie
+  ebenfalls in SENECA.
+- **Erster Start einer geladenen App.** Die App ist nur ad hoc signiert und nicht von Apple notarisiert,
+  deshalb blockiert macOS ihren ersten Start. Ab macOS 15: Doppelklick auf Seneca, bei
+  *„Seneca“ nicht geöffnet* auf **Fertig** klicken (nicht „In den Papierkorb legen“). Dann
+  **Systemeinstellungen ▸ Datenschutz & Sicherheit**, Abschnitt „Sicherheit“: neben
+  *„Seneca“ wurde blockiert, um deinen Mac zu schützen.* auf **Dennoch öffnen** klicken, die Rückfrage
+  *„Seneca“ öffnen?* bestätigen und mit Passwort oder Touch ID freigeben. Das ist nur einmal nötig.
+  Bis macOS 14: Control-Klick auf Seneca ▸ Öffnen ▸ Öffnen. Auf jeder Version geht es auch im Terminal:
+  `xattr -drs com.apple.quarantine /Applications/Seneca.app`.
 - **Ohne App, aus dem Quellbaum**: `scripts/run-app.sh [datei.sml]`.
 
 Das Hauptfenster hat oben die Werkzeugleiste (Neu, Öffnen, Speichern) und unten die Statuszeile mit Name und
@@ -43,8 +55,14 @@ H,H-COSY und C,H-long-range Corr. (2D-Korrelationen, HMBC), Carbon Shifts (HOSE-
 13C-Verschiebungen), Symmetric Atoms Classes, Features, Hybridization und Heterobond Attachments.
 In jedem Unterreiter:
 
-- **Autoconfigure Judge** füllt den Judge aus den Spektren. Bewährt ist: H,H-COSY, C,H-long-range Corr.,
-  Carbon Shifts und Features nacheinander automatisch konfigurieren.
+- **Autoconfigure Judge** füllt den Judge aus den Spektren. Bewährt ist: H,H-COSY, C,H-long-range Corr. und
+  Carbon Shifts nacheinander automatisch konfigurieren, soweit der Datensatz die Spektren dazu hat.
+  **Features** ist optional: Es zieht Punkte ab für Drei- und Vierringe und für Bindungen zwischen zwei
+  Heteroatomen, kann also nur unplausible Strukturen abwerten. Es verlangsamt jede Iteration deutlich (bei
+  polycarpol etwa um das Fünffache), und bei pinene bestraft es den Vierring des α-Pinens selbst.
+- **Hybridization** und **Heterobond Attachments** bleiben besser aus: Wie 2001 werden ihre Tabellen beim Start
+  eines Laufs geleert. Sie vergeben dann 0 Punkte, und Hybridization zählt trotzdem zur Höchstpunktzahl, die
+  so unerreichbar wird.
 - **Activate this Judge?** schaltet den Judge ein oder aus. Ein 2D-Judge ohne passendes Spektrum muss aus sein.
 - **Report Judgeconfig** zeigt die Konfiguration eines 2D-Judges als Text.
 
@@ -56,7 +74,9 @@ Protokoll).
 Die Judge-Konfiguration wird beim Speichern **nicht** mit abgelegt (wie 2001). Nach dem Öffnen also
 Autoconfigure wiederholen.
 
-**Annealing Schedule.** Der Kühlplan. Hat der Datensatz keinen, legt **New ->** einen mit den Standardwerten an.
+**Annealing Schedule.** Der Kühlplan. Hat der Datensatz keinen, legt **New ->** einen mit den Standardwerten an
+(Plateau Steps 500, max. Uphill Steps 50; auch ein neuer Datensatz bekommt diese). Das ist viel kürzer als der
+Plan, den polycarpol mitbringt (10000 und 1000).
 Werte ändern: Eintrag rechts auswählen, Felder links ändern, **-> Update ->**.
 
 ## 4. Rechnen
@@ -84,7 +104,11 @@ Fehlt etwas (keine Atome, kein Kühlplan, ein Judge passt nicht zur Formel), mel
   öffnet sie groß in einem eigenen Fenster. Die Trennlinien zwischen Tabelle, Diagramm, Struktur und
   Bewertung lassen sich verschieben.
 - **Summarize Result**: alle Ergebnisse aller Plätze, nach Score sortiert, in einem Fenster
-  *Structure Display - <Datensatz>*.
+  *Structure Display - <Datensatz>*. Ein Lauf behält jede Struktur, die mindestens so gut ist wie die bisher
+  beste und nicht schon unter den behaltenen ist, und zwar die letzten 30. Bei gleichem Score stehen die
+  Strukturen in der Reihenfolge, in der sie gefunden wurden; die „Best structure“ des Laufs ist also die
+  letzte Kachel mit dem höchsten Score. Oft erreichen mehrere Konstitutionen die Höchstpunktzahl, und die
+  Literaturstruktur ist nicht unbedingt die letzte davon.
   Tooltip einer Kachel: die Bewertung. Dort: **Save MDL** (eine Molfile je Struktur), **Save SDF** (alle in
   einer Datei), **Copy** (Molfile und Bild in die Zwischenablage, auch ⌘C), **Load MDL** und
   **Load LUCY Result** zum Anschauen anderer Strukturen. **View ▸ Current Structures** öffnet ein leeres
@@ -107,3 +131,20 @@ Sie werden an die App angehängt, z.B. `open -n dist/Seneca.app --args --logdir=
 | `--iteration-cap=<n>` | Lauf nach n Iterationen beenden |
 | `--examples=<Ordner>` | anderer Ordner für File ▸ Open ▸ Example Dataset |
 | `--smoke[=<Bericht>]` | Selbsttest: öffnet pinene, rechnet, schreibt einen Bericht, beendet sich |
+
+## 7. Aus dem Quellcode
+
+Bauen, Testen, die Mac-App und die Kommandozeile beschreibt die [README.md](../README.md) im Abschnitt
+„Build from source“ (englisch). Kurz:
+
+```bash
+mvn test                                              # schnelle Testsuite, einige Minuten
+legacy/runnable/build.sh && mvn -Pslow,oracle test    # alles, auch der Vergleich mit dem Code von 2001 (rund 40 Minuten)
+mvn -DskipTests package                               # einmal vor dem ersten Start ohne App
+MVN_OFFLINE= scripts/run-app.sh [datei.sml]           # Oberfläche aus dem Build-Verzeichnis, ohne App
+MVN_OFFLINE= RUNTIME_JDK=temurin scripts/build-app.sh # dist/Seneca.app mit eigener Java-Laufzeit
+scripts/build-dmg.sh                                  # das Disk-Image für ein Release
+scripts/collect-sources.sh                            # Quelltexte der Bibliotheken und der Java-Laufzeit, fürs Release
+```
+
+Entwurf der Portierung und alle Abweichungen von 2001: `docs/port/` (englisch).

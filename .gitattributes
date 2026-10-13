@@ -1,0 +1,6 @@
+# Historical and reference files stay byte-exact on every platform: no end-of-line conversion,
+# whatever core.autocrlf says. legacy/original is identical to github.com/steinbeck/seneca-jcics
+# (CRLF, LF and mixed line endings, as in 2001); the golden master is compared with the port's output.
+LICENSE     -text
+legacy/**   -text
+golden/**   -text

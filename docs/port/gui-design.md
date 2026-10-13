@@ -549,24 +549,46 @@ default `dist/` bundle with Launch Services (or with `REGISTER=1`).
 
 ## 15. Packaging and launch test
 
-`scripts/build-app.sh` builds `dist/Seneca.app` (only `dist/README.md` is versioned):
+`scripts/build-app.sh` builds `dist/Seneca.app` (only `dist/README.md` is versioned); the comments at the top
+of the script are the reference:
 
 1. `mvn package` (tests skipped) and `dependency:copy-dependencies` (runtime scope): the application jar and
    its 27 runtime jars, unshaded, side by side in the app's `Contents/app` (the launcher's class path);
-2. the ten example datasets (`legacy/original/sml/*.sml`) into `Contents/app/examples`
+2. the ten example datasets (`legacy/original/sml/*.sml`) into `Contents/app/examples`, mode 644
    (`-Dseneca.examples=$APPDIR/examples`);
 3. the icon: `scripts/gui/MakeIcon.java` draws alpha-pinene with CDK (cdk-sdg layout, cdk-depict
    rendering, white on a blue rounded square, with a 13C stick spectrum) at each size of a macOS icon set;
    `iconutil` makes `Seneca.icns`;
-4. `jlink`: the modules `jdeps` reports (java.base, java.desktop, java.sql, plus java.logging and
-   jdk.localedata with en/de), stripped, compressed;
-5. `jpackage --type app-image`: name Seneca, version from pom.xml without `-SNAPSHOT`, bundle id
-   `io.github.steinbeck.seneca`, main class `io.github.steinbeck.seneca.app.SenecaApp`, JVM options
+4. `jlink` of `RUNTIME_JDK` (default `JAVA_HOME`; `RUNTIME_JDK=temurin` downloads the pinned Eclipse Temurin
+   release for aarch64 once into `~/Library/Caches/seneca-build` and checks its SHA-256): the modules `jdeps`
+   reports (java.base, java.desktop, java.sql, plus java.logging and jdk.localedata with en/de), stripped,
+   compressed, the `legal/` notices jlink leaves out without `jmods/` (jdk.localedata's) copied from the JDK,
+   every file made owner-writable (jlink copies the read-only `legal/` notices, on which a user's
+   `xattr -drs com.apple.quarantine` would fail). Then the portability check: a runtime whose native libraries
+   load anything from outside macOS and the runtime (Homebrew's openjdk links `/opt/homebrew` libraries) gets a
+   warning here, and `build-dmg.sh` refuses it;
+5. `jpackage --type app-image` of `RUNTIME_JDK`: name Seneca, version from pom.xml without a `-` suffix, bundle
+   id `io.github.steinbeck.seneca`, main class `io.github.steinbeck.seneca.app.SenecaApp`, JVM options
    `-Xss16m` (deep legacy recursion, as in the tests), `--enable-native-access=ALL-UNNAMED` (App Nap,
    DV-89) and the examples directory;
 6. `Info.plist` (plutil): document type "SENECA Dataset" for `.sml` (role Editor, owner) and the exported
-   type `io.github.steinbeck.seneca.sml` (conforms to public.xml), `NSHighResolutionCapable`;
-7. ad-hoc signature `codesign --force --deep -s -`, verified; `lsregister -f` registers the bundle (only a build into the default `dist/`, or with `REGISTER=1`; other `DIST` directories print the command instead).
+   type `io.github.steinbeck.seneca.sml` (conforms to public.xml), `NSHighResolutionCapable`,
+   `LSMinimumSystemVersion` set to the highest minimum macOS version of the bundle's binaries (11.0 with
+   Temurin 25; jpackage writes 10.11), jpackage's default `NSMicrophoneUsageDescription` removed;
+7. `THIRD-PARTY-NOTICES.md` and `LICENSE` into `Contents/Resources`;
+8. ad-hoc signature `codesign --force --deep -s -`, verified;
+9. `lsregister -f` registers the bundle (only a build into the default `dist/`, or with `REGISTER=1`; other
+   `DIST` directories, or `REGISTER=0`, print the command instead).
+
+`scripts/build-dmg.sh` packs it into the release asset `dist/Seneca-<version>-macOS-arm64.dmg` (Seneca.app, a
+link to `/Applications`, `README.txt` with the Gatekeeper steps, `THIRD-PARTY-NOTICES.md`, `LICENSE.txt`) and
+its `.sha256`. It refuses an app with an invalid signature, a bundle version other than the pom's, a
+non-portable runtime, a binary of another architecture, missing notices or files the owner cannot write;
+it stages outside the working copy without extended attributes, verifies the image, and checks the mounted
+copy (signature, `/Applications` link, no extended attributes but macOS's `com.apple.provenance` and the
+Finder's `com.apple.FinderInfo`). `scripts/collect-sources.sh` (online) gathers the source code the release
+carries next to the image: the `-sources.jar` of every library in `Contents/app`, zipped, and Eclipse
+Adoptium's source archive of the bundled Temurin release (pinned SHA-256).
 
 `scripts/launch-test.sh` tests the built application unattended (its windows appear for a few seconds; the
 log files go to a scratch directory through `--logdir`): (1) the launcher binary with `--smoke=<report>`,
@@ -582,5 +604,7 @@ App Nap was suspended during the run (a problem if not) and restored afterwards.
 test measures the speed in the background: the self-test on narelin capped at 400,000 iterations, started
 with `open -g` (never activated), next to the same run on the command line (`cli generate`, bundled
 runtime); the app must reach 60 % of the command line's iterations per second (measured: 9,694 vs 9,925;
-with App Nap allowed through the diagnostic property `-Dseneca.allowAppNap=true`: 4,286). `SPEED_TEST=0`
-skips it. `build-app.sh` and `run-app.sh` run Maven offline unless `MVN_OFFLINE=` is set.
+with App Nap allowed through the diagnostic property `-Dseneca.allowAppNap=true`: 4,286). The measurement
+needs an otherwise idle Mac: under heavy load from other processes the step fails (app about 1,200 it/s,
+command line about 3,100) and the app, whose self-test then times out, is killed with SIGKILL if SIGTERM does
+not stop it. `SPEED_TEST=0` skips it. `build-app.sh` and `run-app.sh` run Maven offline unless `MVN_OFFLINE=` is set.

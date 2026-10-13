@@ -3,7 +3,7 @@
   SENECA (J. Chem. Inf. Comput. Sci. 2001, 41, 1500) ported to JDK 25 + CDK 2.13.
   Design: docs/port/design.md. Deviations from the 2001 program: docs/port/DEVIATIONS.md.
 
-  Build directory: every agent/developer may use a private output directory,
+  Build directory: concurrent builds in one working tree may each use a private output directory,
       mvn -Dbuild.dir=/abs/path/target-<name> test
   (default: ./target). Tests read golden/ and legacy/ directly from the repository.
 
@@ -21,9 +21,46 @@
 
   <groupId>io.github.steinbeck</groupId>
   <artifactId>seneca</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <packaging>jar</packaging>
   <name>SENECA (2001 JCICS version, modern port)</name>
+  <description>
+    SENECA, the program for computer-assisted structure elucidation (CASE) of organic compounds published in
+    J. Chem. Inf. Comput. Sci. 2001, 41(6), 1500-1507 (doi:10.1021/ci000407n), ported to JDK 25 and CDK 2.13
+    with a Swing user interface and packaged as a macOS application. Simulated annealing over the constitutional
+    isomers of a molecular formula, scored against NMR data by a set of judges; results verified against a
+    golden master recorded with the original 2001 code.
+  </description>
+  <url>https://github.com/steinbeck/seneca-jcics-modern</url>
+
+  <licenses>
+    <license>
+      <!-- The licence of the 2001 SENECA package, unchanged (also legacy/original/LICENSE). From
+           "Definitions" to the end it is word for word the Artistic License 1.0 (SPDX Artistic-1.0); only the
+           preamble names the package and the copyright holder. -->
+      <name>SENECA package licence (Artistic License 1.0 terms)</name>
+      <url>https://github.com/steinbeck/seneca-jcics-modern/blob/main/LICENSE</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>steinbeck</id>
+      <name>Christoph Steinbeck</name>
+      <url>https://github.com/steinbeck</url>
+      <roles>
+        <role>author</role>
+      </roles>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/steinbeck/seneca-jcics-modern.git</connection>
+    <developerConnection>scm:git:git@github.com:steinbeck/seneca-jcics-modern.git</developerConnection>
+    <url>https://github.com/steinbeck/seneca-jcics-modern</url>
+    <tag>HEAD</tag>
+  </scm>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

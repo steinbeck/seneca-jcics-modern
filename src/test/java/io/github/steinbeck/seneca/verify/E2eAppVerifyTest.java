@@ -65,7 +65,7 @@ import io.github.steinbeck.seneca.structgen.RunSlot;
 /**
  * Independent end-to-end verification of the application (verifier "e2e-app"): everything driven through
  * the GUI (toolbar / menus / buttons, scripted dialogs), seeded through the hidden hook and compared with
- * golden/runs, on datasets and profiles the packaging agent's GuiEndToEndTest does not use; plus unseeded
+ * golden/runs, on datasets and profiles GuiEndToEndTest does not use; plus unseeded
  * runs, stop/reset mid-run, concurrent slots in two dataset windows, open/save/reopen round trip, and
  * export of results (Save MDL, Save SDF, Copy, Log Annealing Data, log files).
  */

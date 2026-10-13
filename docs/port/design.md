@@ -268,7 +268,7 @@ Test classes (tags: work package `A`/`B`/`C`, and `slow`):
 | `verify/RecipePathGoldenVerifyTest`, `verify/PolicyVerifyTest` | golden trajectories/runs/references through the full SML → recipe → engine path; policy checks (DEFAULT accepts every golden input, app path reproduces a golden run, fixed policy gaps) | verification |
 | `structgen/StartStructureFeasibilityTest` | the start-structure feasibility decision (DV-60) against itself and the real generator on random molecules | C |
 
-Commands (use a private build directory, concurrent agents share the tree):
+Commands (use a private build directory when several builds share the working tree):
 
 ```
 export JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home
@@ -321,8 +321,8 @@ section 15.
 
 Shared files (`pom.xml`, `LegacyCompat`, `golden/Json`, `golden/Hashes`, all of
 `src/test/java/.../golden` infrastructure, `PortHygieneTest`, this document): owned by the architect;
-make only minimal changes and report them. Each package edits only its own files. No commits (the
-orchestrator commits). Implementations replaced the skeleton's `NotImplementedYet` stubs (class removed
+make only minimal changes and report them. Each package edits only its own files. Commits were made
+centrally, after review. Implementations replaced the skeleton's `NotImplementedYet` stubs (class removed
 once all were implemented); signatures may be extended, not silently changed – report signature changes. Javadoc of every skeleton names the legacy
 source to port.
 

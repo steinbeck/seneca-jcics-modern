@@ -26,7 +26,7 @@ import io.github.steinbeck.seneca.app.AppPaths;
  * Thread-safe; every write is flushed. An I/O error does not reach the caller: it is logged once and that
  * file is no longer written (log4j swallowed errors, too). After {@link #close()} writes are ignored.
  *
- * <p>Owner: G2 (verify against a legacy run with {@code -Duser.home=<scratch>}); skeleton by the GUI architect.
+ * <p>Verified against a legacy run with {@code -Duser.home=<scratch>}.
  */
 public final class LogFiles implements AutoCloseable {
 

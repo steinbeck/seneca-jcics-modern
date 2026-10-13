@@ -1,6 +1,6 @@
 # How a SENECA structure generation run is driven in-process
 
-Audience: the agent writing the headless harness. Everything here was read from the source
+Audience: whoever writes the headless harness. Everything here was read from the source
 and, where marked **verified**, executed on JDK 25 against `legacy/runnable/classes`.
 A complete, compiling and verified example is `examples/DriveSketch.java`.
 
