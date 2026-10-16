@@ -50,8 +50,8 @@ released version upstream.
 | `jfreechart-1.5.6.jar` | `org.jfree:jfreechart:1.5.6` | GNU LGPL 2.1 or later | https://www.jfree.org/jfreechart/ |
 | `vecmath-1.5.2.jar` | `javax.vecmath:vecmath:1.5.2` | GNU GPL 2 with the Classpath Exception | https://repo1.maven.org/maven2/javax/vecmath/vecmath/1.5.2/ (the project page named in the POM, java.net/projects/vecmath, is gone) |
 
-How they get there: SENECA depends directly on `cdk-core`, `cdk-silent`, `cdk-ctab`, `cdk-smiles`,
-`cdk-isomorphism`, `cdk-sdg`, `cdk-depict`, `cdk-standard` and `jfreechart` (`pom.xml`); the others are
+SENECA depends directly on `cdk-core`, `cdk-silent`, `cdk-ctab`, `cdk-smiles`,
+`cdk-isomorphism`, `cdk-sdg`, `cdk-depict`, `cdk-standard`, and `jfreechart` (`pom.xml`); the others are
 their transitive runtime dependencies (`mvn dependency:tree -Dscope=runtime`). The FreeHEP jars, including
 `freehep-graphicsio-tests`, come in through `cdk-depict`.
 
@@ -78,18 +78,18 @@ Per project:
 
 ## Java runtime
 
-`Contents/runtime` is **Eclipse Temurin 25.0.4.1+1** (OpenJDK 25, built by Eclipse Adoptium,
+`Contents/runtime` is Eclipse Temurin 25.0.4.1+1 (OpenJDK 25, built by Eclipse Adoptium,
 https://adoptium.net), cut down by `jlink` to the modules `java.base`, `java.datatransfer`,
-`java.desktop`, `java.logging`, `java.prefs`, `java.sql`, `java.transaction.xa`, `java.xml` and
+`java.desktop`, `java.logging`, `java.prefs`, `java.sql`, `java.transaction.xa`, `java.xml`, and
 `jdk.localedata` (English and German locale data only). The launcher `Contents/MacOS/Seneca` is the
 application launcher of OpenJDK's `jpackage` from the same release.
 
 Licence: GNU GPL version 2 with the Classpath Exception (text below), plus the OpenJDK Assembly Exception;
-both are in `Contents/runtime/Contents/Home/legal/java.base/` (`LICENSE`, `ASSEMBLY_EXCEPTION`,
-`ADDITIONAL_LICENSE_INFO`), and the same three files are in the folder of every other module. Source: see
+both are in `Contents/runtime/Contents/Home/legal/java.base/` (`LICENSE`, `ASSEMBLY_EXCEPTION`, and
+`ADDITIONAL_LICENSE_INFO`), and the folder of every other module holds the same three files. Source: see
 "Source code" below.
 
-The runtime contains third-party code with its own licences. Their notices and licence texts ship with the
+The runtime contains third-party code under its own licences; the notices and licence texts ship with the
 runtime, in `Contents/runtime/Contents/Home/legal/`:
 
 | Notice file in `legal/` | Component | Licence or notice (heading of the file) |
@@ -134,32 +134,33 @@ The source code of all third-party software in the app is published with every r
 the disk image (https://github.com/steinbeck/seneca-jcics-modern/releases):
 
 - `Seneca-<version>-third-party-sources.zip`: the source of the 27 Java libraries above, one
-  `<artifact>-<version>-sources.jar` each, unmodified from Maven Central (where it is also published next to
-  each jar, under https://repo1.maven.org/maven2/), with `SOURCES.txt`, which names the jar each belongs to.
+  `<artifact>-<version>-sources.jar` each, unmodified from Maven Central (which also publishes each of them
+  next to its jar, under https://repo1.maven.org/maven2/), plus `SOURCES.txt`, which names the jar that each
+  sources jar belongs to.
 - `OpenJDK25U-jdk-sources_25.0.4.1_1.tar.gz`: the complete source of the Java runtime and of the `jpackage`
   launcher, the archive Eclipse Adoptium publishes for Temurin 25.0.4.1+1
   (https://github.com/adoptium/temurin25-binaries/releases/tag/jdk-25.0.4.1%2B1; the repository is
   https://github.com/adoptium/jdk25u, tag `jdk-25.0.4.1+1`).
 
-`scripts/collect-sources.sh` assembles both. The upstream repositories listed above have the sources too.
+`scripts/collect-sources.sh` assembles both. The upstream repositories listed above also hold the sources.
 
 The Java libraries are the unmodified jars from Maven Central. They stay separate files in
-`Seneca.app/Contents/app/`, listed by name in `Contents/app/Seneca.cfg`, so each can be replaced by a modified
-version; re-sign the bundle afterwards (`codesign --force --deep -s - Seneca.app`).
+`Seneca.app/Contents/app/`, listed by name in `Contents/app/Seneca.cfg`, so a user can replace each of them with
+a modified version; re-sign the bundle afterwards (`codesign --force --deep -s - Seneca.app`).
 
 ## Keeping this file current
 
 `scripts/build-app.sh` copies this file into every build. When `pom.xml` or the runtime
-(`TEMURIN_RELEASE` in `scripts/build-app.sh`) changes, update the tables: the jars from
-`mvn dependency:tree -Dscope=runtime`, the runtime's components from `Contents/runtime/Contents/Home/legal/`.
-A new Temurin release also needs `TEMURIN_SOURCES_SHA256` in `scripts/collect-sources.sh` and the name of
+(`TEMURIN_RELEASE` in `scripts/build-app.sh`) changes, update the tables: take the jars from
+`mvn dependency:tree -Dscope=runtime` and the runtime's components from `Contents/runtime/Contents/Home/legal/`.
+For a new Temurin release, also update `TEMURIN_SOURCES_SHA256` in `scripts/collect-sources.sh` and the name of
 the source archive above.
 
 ## Licence texts
 
 ### GNU Lesser General Public License, version 2.1
 
-CDK, JFreeChart, FreeHEP (one of its two licences).
+CDK, JFreeChart, and FreeHEP (one of its two licences).
 
 ```text
                   GNU LESSER GENERAL PUBLIC LICENSE

@@ -6,14 +6,15 @@ message: >-
 type: software
 title: "SENECA (2001 JCICS version, modern port)"
 abstract: >-
-  A faithful port of SENECA, the program for computer-assisted structure
-  elucidation (CASE) of organic compounds published in 2001, to Java 25 and
-  the Chemistry Development Kit (CDK) 2.13, with a Swing user interface
-  packaged as a macOS application. SENECA searches the constitutional isomers
-  of a molecular formula by simulated annealing and scores each candidate
+  A faithful port to Java 25 and the Chemistry Development Kit (CDK) 2.13 of
+  SENECA, the program for computer-assisted structure elucidation (CASE) of
+  organic compounds published in 2001. Its Swing user interface is packaged
+  as a macOS application. SENECA searches the constitutional isomers of a
+  molecular formula by simulated annealing and scores each candidate
   structure against NMR data with a set of judges. The port reproduces the
-  results of the 2001 program, checked against a golden master recorded with
-  the original code; every deviation is documented.
+  results of the 2001 program; tests check this against a golden master
+  recorded with the original code, and the documentation lists every
+  deviation.
 authors:
   - family-names: Steinbeck
     given-names: Christoph

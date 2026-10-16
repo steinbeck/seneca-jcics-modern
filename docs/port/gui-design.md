@@ -1,66 +1,66 @@
 # SENECA port – GUI design
 
 The Swing application on top of the ported core (docs/port/design.md). This document is the contract
-for the two GUI implementers G1 (dataset editing) and G2 (runs and results), section 13. Behaviour is
-specified elsewhere and not repeated here:
+for the two GUI implementers of section 13, G1 (dataset editing) and G2 (runs and results). Other
+documents specify the behaviour, and this one does not repeat it:
 
 | Document | Content |
 |---|---|
-| `docs/legacy/feature-inventory.md` | every user-visible function F-xx with labels, defaults and file formats: **the GUI specification** |
-| `docs/legacy/architecture.md` | legacy data flow (section 3), logging (section 8), defects D1–D16 (section 9) |
+| `docs/legacy/feature-inventory.md` | every user-visible function F-xx with labels, defaults, and file formats: the GUI specification |
+| `docs/legacy/architecture.md` | legacy data flow (section 3), logging (section 8), and defects D1–D16 (section 9) |
 | `legacy/original/src/seneca/client/` | the 34 legacy client sources (ISO-8859-1: read with `iconv -f ISO-8859-1`) |
-| `docs/port/design.md` | core packages, run API (section 7), threading of runs (section 8), `LegacyCompat` (section 5) |
-| `docs/port/DEVIATIONS.md` | deviations of the core; GUI deviations are in section 12 here (DV-70 onwards) |
+| `docs/port/design.md` | core packages, run API (section 7), threading of runs (section 8), and `LegacyCompat` (section 5) |
+| `docs/port/DEVIATIONS.md` | deviations of the core; section 12 of this document lists the GUI deviations (DV-70 onwards) |
 
 ## 1. Principles
 
 1. **Every KEEP and KEEP-ADAPT item of the feature inventory exists** (mapping in section 4). DROP items
-   (RMI, GateKeeper, server lists, disabled or no-op menu entries, unreachable classes) do not appear.
+   (RMI, GateKeeper, server lists, disabled or no-op menu entries, and unreachable classes) do not appear.
 2. **Recognisable, not re-designed.** Swing, as in 2001. Window structure, tab order, table columns,
-   button labels, menu labels and message texts are the 2001 ones; where a label must change (run slots
-   instead of servers) the change is listed in section 12.
+   button labels, menu labels, and message texts are the 2001 ones; where a label must change (run slots
+   instead of servers), section 12 lists the change.
 3. **The GUI calls the core; it computes nothing that decides a result.** Autoassignment,
-   autoconfigure, table edits of judges, schedule editing, H balance, file formats, runs, summarize: all
-   in the core (`config`, `io`, `structgen`, `chem`). If the GUI needs something the core lacks, add it
-   minimally to the core **with a unit test** and report it; never duplicate logic in Swing code.
+   autoconfigure, table edits of judges, schedule editing, H balance, file formats, runs, and summarize
+   all live in the core (`config`, `io`, `structgen`, `chem`). If the GUI needs something the core lacks, add it
+   minimally to the core with a unit test and report it; never duplicate logic in Swing code.
 4. **The application runs `LegacyCompat.DEFAULT`** (`AppContext.compat`) everywhere a core API takes a
    mode (`RunInput.fromDataset`, `JudgeConfiguration.autoconfigure`, `ScheduleConfiguration`,
    `AtomProperties.autoassign`, `WinNmrPeakPicking.paste`, `LucyDatasetImporter.read`,
    `SpecMLWriter.write`, `RunController.summarize`).
-5. **Testable without a human** (section 10): nothing in `app` creates a dialog, file chooser or frame or
+5. **Testable without a human** (section 10): nothing in `app` creates a dialog, file chooser, or frame, or
    touches the clipboard except through `app.ui.UiServices`; every control the scripted tests drive has a
    `ComponentNames` name; tests run headless.
 6. **macOS first**, nothing macOS-only: `java.awt.Desktop`/`Taskbar` integration where supported,
-   system look and feel, native file dialog; everything degrades to plain Swing elsewhere.
+   system look and feel, and native file dialog; everything degrades to plain Swing elsewhere.
 
 ## 2. Decisions
 
 | Topic | Decision | Why |
 |---|---|---|
 | Look and feel (F-05) | system look and feel at start (Aqua on macOS: `LookAndFeels.systemClassName()`); Edit ▸ Preferences ▸ Look&Feel lists the installed ones | the 2001 list had 3 non-existent L&Fs; Aqua is what a Mac user expects |
-| Window structure (F-10, F-13) | main `JFrame` "Seneca" (toolbar, `JDesktopPane`, status bar; 2001: 800×600, now 1120×780 reduced to the screen, DV-88); one `JInternalFrame` per dataset, opened **maximized** (fills the desktop as in 2001; the title-bar button un-maximizes it into a free internal window); "Structure Display" and "Judge Configuration Report" are separate top-level frames, as in 2001 | keeps the 2001 layout; a top-level frame per dataset would need a menu bar per frame on macOS |
+| Window structure (F-10, F-13) | main `JFrame` "Seneca" (toolbar, `JDesktopPane`, and status bar; 2001: 800×600, now 1120×780 reduced to the screen, DV-88); one `JInternalFrame` per dataset, opened maximized (fills the desktop as in 2001; the title-bar button un-maximizes it into a free internal window); "Structure Display" and "Judge Configuration Report" are separate top-level frames, as in 2001 | keeps the 2001 layout; a top-level frame per dataset would need a menu bar per frame on macOS |
 | Menu bar | screen menu bar on macOS (`apple.laf.useScreenMenuBar`); same menus elsewhere; `Desktop.setDefaultMenuBar` shows it while a separate window has focus | macOS convention |
-| About / Quit | application menu (via `Desktop`) **and** Help ▸ About Seneca / File ▸ Exit; both quit paths show the 2001 confirmation | identical menu content plus macOS convention |
-| Accelerators | ⌘N New Dataset, ⌘O Open, ⌘S Save (Ctrl elsewhere) | addition, harmless |
+| About / Quit | application menu (via `Desktop`) and Help ▸ About Seneca / File ▸ Exit; both quit paths show the 2001 confirmation | identical menu content plus macOS convention |
+| Accelerators | ⌘N New Dataset, ⌘O Open, ⌘S Save (Ctrl elsewhere) | harmless addition |
 | File dialogs | `java.awt.FileDialog` (native, multi-select, own overwrite prompt) on macOS, `JFileChooser` with an extension filter elsewhere (`app.ui.SwingFileDialogs`) | native dialog on the Mac |
-| Close dataset → "Yes" (F-48, D11) | saves **SML** (`SpecMLWriter`, DEFAULT), exactly like File ▸ Save, then closes; "No" closes; "Cancel" keeps it | the 2001 CML output is not well-formed and has no reader (data loss) |
-| Save (F-22) | appends `.sml` if the chosen name has no extension; native dialog asks before overwriting | 2001 wrote the name verbatim with no prompt |
-| New Dataset (F-20, D10) | `SenecaDataset.newDataset(name)`: name `"untitled" + new Date().hashCode()`, `init()` (7 disabled judges), one default schedule | 2001 dataset could not be run |
+| Close dataset → "Yes" (F-48, D11) | saves SML (`SpecMLWriter`, DEFAULT), exactly like File ▸ Save, then closes; "No" closes; "Cancel" keeps it | the 2001 CML output is not well-formed and has no reader (data loss) |
+| Save (F-22) | appends `.sml` if the chosen name has no extension; the native dialog asks before overwriting | 2001 wrote the name verbatim with no prompt |
+| New Dataset (F-20, D10) | `SenecaDataset.newDataset(name)`: name `"untitled" + new Date().hashCode()`, `init()` (7 disabled judges), one default schedule | the 2001 dataset could not be run |
 | Judge configuration in SML (D9) | not persisted (unchanged); Autoconfigure is deterministic from the data | changing the format is out of scope; revisit on request |
-| Current dataset (F-33) | adding a dataset makes it current (2001); additionally **activating a dataset window makes it current**, and Datasets ▸ switch raises the window | in 2001 "Save" could silently save a dataset other than the visible one |
+| Current dataset (F-33) | adding a dataset makes it current (as in 2001); activating a dataset window makes it current as well, and Datasets ▸ switch raises the window | in 2001 "Save" could silently save a dataset other than the visible one |
 | Run slots (F-60..F-66) | section 6 | RMI dropped |
-| Logging | `java.util.logging` for the application's own messages (no dependency); the three legacy log files written by `app.log.LogFiles` reproducing the log4j layouts (section 9) | log4j 1.x is EOL |
-| Preferences (7.8) | properties file "Seneca Properties", keys `filelocation.seneca`, `filelocation.lucy`; `~/Library/Application Support/io.github.steinbeck.seneca/seneca.props` on macOS (DV-78), `~/seneca.props` elsewhere; default directory = home (2001: "/") | macOS location; "/" is useless |
-| Log file location (F-06, 7.7) | home directory, names unchanged, truncated at start; overridable with `-Dseneca.logdir=<dir>` | 1:1; the override serves tests and users who want them elsewhere |
-| Structure drawing (F-85) | CDK `StructureDiagramGenerator` (cdk-sdg) + `DepictionGenerator` (cdk-depict), section 8; **no editor** (jmdraw was display-only in SENECA) | inventory 9 |
+| Logging | `java.util.logging` for the application's own messages (no dependency); `app.log.LogFiles` writes the three legacy log files, reproducing the log4j layouts (section 9) | log4j 1.x has reached end of life |
+| Preferences (7.8) | properties file "Seneca Properties", keys `filelocation.seneca` and `filelocation.lucy`; `~/Library/Application Support/io.github.steinbeck.seneca/seneca.props` on macOS (DV-78), `~/seneca.props` elsewhere; default directory = home (2001: "/") | macOS location; "/" is useless |
+| Log file location (F-06, 7.7) | home directory, names unchanged, truncated at start; overridable with `-Dseneca.logdir=<dir>` | 1:1; the override is for tests and for users who want them elsewhere |
+| Structure drawing (F-85) | CDK `StructureDiagramGenerator` (cdk-sdg) + `DepictionGenerator` (cdk-depict), section 8; no editor (jmdraw was display-only in SENECA) | inventory 9 |
 | Annealing chart (F-70) | JFreeChart 1.5.6 (`org.jfree.chart`) | inventory 9 |
 | Resources (F-04) | `io/github/steinbeck/seneca/app/Seneca.properties` (2001 texts) + `images/{new,open,save,strucDisp,seneca}.gif` | 1:1 |
 
 ## 3. Packages and classes
 
-All GUI code is in `io.github.steinbeck.seneca.app` (the only package allowed to use AWT/Swing,
-`PortHygieneTest`; GUI rules: `app.AppHygieneTest`). Owner: **A** = GUI architect (done), **G1**, **G2**
-(section 13). "skeleton" = exists as a working minimal or placeholder version that the owner completes.
+All GUI code is in `io.github.steinbeck.seneca.app` (the only package `PortHygieneTest` allows to use
+AWT/Swing; `app.AppHygieneTest` checks the GUI rules). Owner: **A** = GUI architect (done), **G1**, **G2**
+(section 13). "skeleton": a working minimal or placeholder version exists, and the owner completes it.
 
 | Class | Owner | Responsibility |
 |---|---|---|
@@ -186,19 +186,19 @@ dataset; "No dataset loaded" after the last one was closed. Action command keys 
 names (`new`, `openAll`, `saveAll`, `LUCYimp`, `exit`, `curSol`, `about`, `switchDS`).
 
 Dataset window (`DatasetFrame`): title = dataset name (follows renames), tabs **General Settings, NMR
-Spectra, Atom Properties, Annealing Schedule, Judges, Structure Generation, Logbook** (tooltips as 2001,
+Spectra, Atom Properties, Annealing Schedule, Judges, Structure Generation, Logbook** (tooltips as in 2001,
 "LogBook" for Logbook), "Close" button. Constructing it calls `JudgeConfiguration.datasetWindowOpened(sd)`
-**once** (the 2001 configurator constructors' side effect); panels must not call it again. It owns the
-window's `RunController`. `close()` stops and clears the runs (control thread), removes the dataset and
-disposes the window. Tab panels are constructed with a `DatasetContext(app, dataset, frame, runs)`;
-keep these constructor signatures.
+once (the 2001 configurator constructors' side effect); panels must not call it again. It owns the
+window's `RunController`. `close()` stops and clears the runs (control thread), removes the dataset, and
+disposes the window. Each tab panel takes a `DatasetContext(app, dataset, frame, runs)` in its
+constructor; keep these constructor signatures.
 
 ## 6. Run slots instead of the server list (G2)
 
 The "Structure Generation" tab keeps the 2001 layout (legacy rendering:
 `legacy-dataset-7-Structure_Generation.png`, section 10.5): run table and chart "Annealing Data" on top,
-best-structure drawing and "Current Structure Evaluation" below, three titled button groups at the
-bottom. The empty north text field (never written in 2001) is dropped.
+best-structure drawing and "Current Structure Evaluation" below, and three titled button groups at the
+bottom. The port drops the empty north text field (never written in 2001).
 
 | 2001 | Port |
 |---|---|
@@ -206,19 +206,19 @@ bottom. The empty north text field (never written in 2001) is dropped.
 | group "Selections": "Start as selected", "Stop Selected", "Reset selected" | unchanged |
 | group "Result": "Summarize Result", "Log Annealing Data" | unchanged |
 | table `No.`, `ID`, `Host`, `Dataset`, `MF`, `Status `, `Iter.` (yellow cells; idle row: Dataset/MF "none", Status "idle", Iter "none") | unchanged; ID `local<k>` (`RunSlot.id()`), Host "local" (`RunSlot.host()`), Status `RunStatus.State.label` |
-| chart series "host <i>", "max. Score"; Summarize descriptions "Result from host <i>" | unchanged (the description text is produced by the core) |
+| chart series "host <i>", "max. Score"; Summarize descriptions "Result from host <i>" | unchanged (the core produces the description text) |
 
 Semantics (all fixed in the core, DV-21..DV-25, DV-47): one `RunController` per dataset window; a slot
 runs at most one run (Start on a running slot stops and joins it first); Reset and Clear stop runs;
 Summarize uses `RunController.summarize(LegacyCompat.DEFAULT)` (deep copies, never drains a run).
-Start: `RunInput in = RunInput.fromDataset(ctx.dataset(), app.compat)` **on the EDT** (it reads and
+Start: `RunInput in = RunInput.fromDataset(ctx.dataset(), app.compat)` on the EDT (it reads and
 mutates the dataset's judges, quirk Q6), then for every selected slot
-`app.control(() -> runs.start(slot, in, app.runOptions(slot)))` (the generator copies its input). An
-`IllegalArgumentException` (DEFAULT input validation: no atoms, no schedule, judge configured for
-another formula, impossible formula) is shown with `Dialogs` (message = exception message); nothing
+`app.control(() -> runs.start(slot, in, app.runOptions(slot)))` (the generator copies its input). If DEFAULT
+input validation throws an `IllegalArgumentException` (no atoms, no schedule, a judge configured for
+another formula, or an impossible formula), `Dialogs` shows the exception's message, and nothing
 starts. Polling (F-69): a `javax.swing.Timer(2000)` refreshes the table every tick and, round robin, one
 slot's best structure, evaluation HTML (`<html>\n<b>Score: s[/max]</b>` + description + `</html>\n`,
-title "Evaluation of no. k", drawing title "Best structure of no.k" / "No structure available") and its
+title "Evaluation of no. k", drawing title "Best structure of no.k" / "No structure available"), and its
 new annealing-log entries (`slot.annealingLogSince(lastIndex)`, one index per slot; nothing is drained).
 Listener events (`RunListener` via `EdtRunListener`) may refresh the table and status earlier.
 
@@ -227,9 +227,9 @@ Listener events (`RunListener` via `EdtRunListener`) may refresh the table and s
 | State | Lives in | Thread |
 |---|---|---|
 | open datasets, current dataset | `AppContext.datasets` (`DatasetCollection`) | EDT |
-| dataset content (atoms, spectra, schedules, judges) | the `SenecaDataset` itself; the tabs edit it in place (as 2001) and call `sd.fireChange()` after edits that other views show (name, formula) | EDT |
+| dataset content (atoms, spectra, schedules, judges) | the `SenecaDataset` itself; the tabs edit it in place (as in 2001) and call `sd.fireChange()` after edits that other views show (name, formula) | EDT |
 | per-window table/editor state (`ScheduleConfiguration`, selections) | the panel | EDT |
-| runs of a dataset window | `DatasetFrame.runs()` (`RunController`), slots, their results and annealing logs (thread-safe core objects) | any |
+| runs of a dataset window | `DatasetFrame.runs()` (`RunController`), its slots, and their results and annealing logs (thread-safe core objects) | any |
 | chart series data, poll index, last log index per slot | `app.run` panel | EDT |
 | Logbook text | `AppContext.logbook` (one `StyledDocument` shared by every window's Logbook tab) | append: any; document: EDT |
 | log files | `AppContext.logFiles` | any (synchronized) |
@@ -237,14 +237,14 @@ Listener events (`RunListener` via `EdtRunListener`) may refresh the table and s
 | hidden test hooks | `AppContext.hooks` (`TestHooks`) | immutable |
 | open top-level windows | `WindowHost` handles held by their panels | EDT |
 
-No static mutable state in `app` (one `AppContext` per application and per test).
+`app` holds no static mutable state (one `AppContext` per application and per test).
 
 ## 8. Structure display: jmdraw → CDK (G2)
 
-jmdraw was used **only for display**: `JMDrawPanel` in the Structure Generation tab (best structure) and
-in the Structure Display tiles; `JMDraw.draw()` computed 2D coordinates (ring templates), the
-`RenderingEngine` drew them scaled to 80 % of the panel, centred, white background, implicit H on
-labelled atoms. **No structure was ever edited** anywhere in SENECA, so no editor is needed.
+SENECA used jmdraw only for display: `JMDrawPanel` in the Structure Generation tab (best structure)
+and in the Structure Display tiles; `JMDraw.draw()` computed 2D coordinates (ring templates), and the
+`RenderingEngine` drew them scaled to 80 % of the panel, centred, on a white background, with implicit H
+on labelled atoms. No structure was ever edited anywhere in SENECA, so the port needs no editor.
 
 Pipeline (`app.structure.Depictions` / `StructureView`, a `JComponent`):
 
@@ -254,16 +254,16 @@ Pipeline (`app.structure.Depictions` / `StructureView`, a `JComponent`):
 2. `AtomSets.createConnectionTable(atoms)` + `synchronizeConnectionTable` → bond matrix →
    `chem.CdkBridge.toAtomContainer(atoms, bm)`.
 3. Layout: `chem.CdkBridge.layout2D(HeavyAtom[])` (core, tested): CDK `StructureDiagramGenerator`
-   (cdk-sdg), improved by `chem.Layout2D` where its layout has crossing bonds, crowded atoms or atoms
+   (cdk-sdg), improved by `chem.Layout2D` where its layout has crossing bonds, crowded atoms, or atoms
    drawn on top of each other or on a foreign bond (DV-88; the last two are removed in every golden best
    structure);
    the 2D coordinates are copied into `HeavyAtom.x/y`, so that Save MDL writes them with
    `LegacyMdlWriter.write(title, atoms)` (byte-exact legacy format; 2001: "coordinates from the drawing
    layout"). Summarize Result lays its tiles out in parallel.
 4. Render: `DepictionGenerator` (cdk-depict) → `Depiction.draw(Graphics2D, bounds)` or
-   `toImg()`, fitted to 80 % of the component, centred, white background; default CDK style (heteroatom
+   `toImg()`, fitted to 80 % of the component, centred, on a white background; default CDK style (heteroatom
    H shown, carbons unlabelled). Cache the depiction per structure; never lay out on every paint.
-5. Errors (unparsable MDL, layout failure) show the tile's title and an empty white area, logged.
+5. Errors (unparsable MDL, layout failure) are logged and show the tile's title and an empty white area.
 
 Save MDL (F-93): `FileDialogs.save` (title "Save MDL MOL Files"), trailing `.mol` stripped, one file
 `<dir>/<name><index>.mol` per tile (index 0-based, title line = file name). **Additions (G2):** "Save SDF"
@@ -272,7 +272,7 @@ Save MDL (F-93): `FileDialogs.save` (title "Save MDL MOL Files"), trailing `.mol
 
 ## 9. Logging (G2)
 
-`AppEngineLog` (one instance, `AppContext.engineLog`, set on every run by `AppContext.runOptions`)
+`AppEngineLog` (one instance, `AppContext.engineLog`, which `AppContext.runOptions` sets on every run)
 reproduces the 2001 log4j configuration (architecture.md 8; categories are additive):
 
 | Target | Content | Layout |
@@ -281,68 +281,68 @@ reproduces the 2001 log4j configuration (architecture.md 8; categories are addit
 | `seneca.log` | every engine INFO message, every result block, every "Log Annealing Data" message | `%m%n` (message + "\n") |
 | `seneca.results.sdf` | every new best structure (`mdl + "\n$$$$\n"`) | `%m` |
 | `seneca.annealing.log` | "Log Annealing Data" table | `%m` |
-| stdout | "Log Annealing Data" table (as 2001); FATAL "Error in StoicGent.run()" as `%p [%t] %c{2} (%M:%L) - %m%n`-like line | – |
+| stdout | "Log Annealing Data" table (as in 2001); FATAL "Error in StoicGent.run()" as `%p [%t] %c{2} (%M:%L) - %m%n`-like line | – |
 
-All three files are truncated when the application starts. Application diagnostics (unreadable
-preferences, I/O problems, listener failures) go to `java.util.logging`; anything the user must know
-is shown with `Dialogs`. **Verified (G2)** against a 2001 run: `scripts/legacy-run-shots.sh` drives the
+The application truncates all three files when it starts. Application diagnostics (unreadable
+preferences, I/O problems, listener failures) go to `java.util.logging`; `Dialogs` shows anything the
+user must know. **Verified (G2)** against a 2001 run: `scripts/legacy-run-shots.sh` drives the
 2001 `SGServerPanel` in-process (client log4j configuration, A4 with Fancy=false as `Seneca` sets it,
-`user.home` = scratch) for pinene "gui" seed 1, polls once, presses "Log Annealing Data". Its Logbook text,
-`seneca.log`, `seneca.results.sdf`, `seneca.annealing.log` and stdout are stored in
+`user.home` = scratch) for pinene "gui" seed 1, polls once, and presses "Log Annealing Data". Its Logbook text,
+`seneca.log`, `seneca.results.sdf`, `seneca.annealing.log`, and stdout are stored in
 `src/test/resources/io/github/steinbeck/seneca/app/runs/legacy-pinene-gui-seed1/`;
 `app.runs.RunPanelTest.outputsEqualThoseOfThe2001Client` drives the same run through the port's tab and
-finds all five **identical** (apart from start/stop time and runtime). The 2001 Logbook style is kept: 14 pt,
-INFO grey (TextPaneAppender attributes), white pane. The core's `FileEngineLog` (newline only when missing)
-is not used by the app. With several runs at once the Logbook gets whole lines per run, and it keeps only
+finds all five identical (apart from start/stop time and runtime). The port keeps the 2001 Logbook style: 14 pt,
+INFO grey (TextPaneAppender attributes), white pane. The app does not use the core's `FileEngineLog` (newline
+only when missing). With several runs at once, the Logbook gets whole lines per run and keeps only
 the newest ~1 MB (DV-90, `app.LogbookTest`); the files are unchanged.
 
 ## 10. Testing without a human
 
 ### 10.1 Rules
 
-- Tests run **headless** (surefire `-Djava.awt.headless=${seneca.headless}`, default true). No
+- Tests run headless (surefire `-Djava.awt.headless=${seneca.headless}`, default true). No
   `java.awt.Robot`, no OS accessibility, no visible window, ever.
-- Components are built on the EDT (`GuiTestSupport.onEdt`), actions triggered with
-  `AbstractButton.doClick()` / `Action.actionPerformed` / model setters, then `flushEdt()`.
-- Everything that would block on a user is scripted through `ScriptedUi` (test implementation of
-  `UiServices`): file dialogs answer queued files, option panes answer queued options and are recorded
-  (title, pane), windows are recorded (title, content), the clipboard is a field.
+- Tests build components on the EDT (`GuiTestSupport.onEdt`), trigger actions with
+  `AbstractButton.doClick()` / `Action.actionPerformed` / model setters, and then call `flushEdt()`.
+- `ScriptedUi` (the test implementation of `UiServices`) scripts everything that would block on a user:
+  file dialogs answer queued files; option panes answer queued options and are recorded (title, pane);
+  windows are recorded (title, content); the clipboard is a field.
 - Log files and preferences go to a scratch directory (`AppPaths.under`), and `user.home` points to a
-  scratch directory while a test app is open (`GuiTestSupport.newApp`); real `~/seneca.*` are never
-  touched.
-- Exit is a hook (`AppContext.setExitHook`); `System.exit` only in `SenecaApp` and `AppContext`
+  scratch directory while a test app is open (`GuiTestSupport.newApp`); tests never touch the
+  real `~/seneca.*` files.
+- Exit is a hook (`AppContext.setExitHook`); `System.exit` appears only in `SenecaApp` and `AppContext`
   (`AppHygieneTest`).
 
 ### 10.2 Harness (`src/test/java/io/github/steinbeck/seneca/app`)
 
 | Class | Purpose |
 |---|---|
-| `GuiTestSupport` | `onEdt`, `flushEdt`, `waitFor`; `render`/`shot` (offscreen PNG to `<build>/gui-shots`, surefire property `seneca.guishots`), `shotMenu`; `find`/`require` by `ComponentNames` (`require` **aborts** the test as skipped while a control is not implemented), `click`, `menuItem(bar, "File", "Open", "SENECA Dataset")`, `labels`; `newApp(name, hooks)` → `TestApp` (context, `MainView`, menu bar, `ScriptedUi`, scratch dir, exit counter) |
+| `GuiTestSupport` | `onEdt`, `flushEdt`, `waitFor`; `render`/`shot` (offscreen PNG to `<build>/gui-shots`, surefire property `seneca.guishots`), `shotMenu`; `find`/`require` by `ComponentNames` (`require` aborts the test as skipped while a control is not implemented), `click`, `menuItem(bar, "File", "Open", "SENECA Dataset")`, `labels`; `newApp(name, hooks)` → `TestApp` (context, `MainView`, menu bar, `ScriptedUi`, scratch dir, exit counter) |
 | `ScriptedUi` | scripted `FileDialogs`, `Dialogs`, `WindowHost`, `TextClipboard` |
 | `GuiSmokeTest` | menus, toolbar, status bar; New/Open; both dataset windows, every tab and sub-tab rendered; Datasets ▸ switch; rename; Close (Cancel/No); About, Exit (No/Yes), Structure Display window, Look&Feel switch; all rendered |
-| `GuiEndToEndTest` | (1) **scripted end-to-end**, one test per run: toolbar "Open a file" (scripted dialog) → the golden recipe by hand in the window (`app.edit.RecipeThroughPanelsTest.configure`: Autoassignment, typed H counts, Autoconfigure in the profile's order, untick, New schedule) → dataset equal to `GuiRecipe.prepare(..., DEFAULT)` record by record → "Add run slot" *s* times, select row *s*, "Start as selected" (seed *s* via the hook) → result equal to `golden/runs/<key>.<profile>.seed<s>.json` (status, iterations, random draws, kT, best score and structure, every result) and shown by the GUI (table row, best-structure drawing, evaluation, Summarize tiles, Logbook). Runs: pinene gui/paper seed 1, eurabidiol gui/paper seed 1, polycarpol paper seed 2 (`slow`). (2) the GUI run path without the editing panels (recipe-prepared dataset, the window's `RunController`, `AppContext.runOptions`, `EdtRunListener`, Logbook and log files) |
+| `GuiEndToEndTest` | (1) scripted end-to-end, one test per run: toolbar "Open a file" (scripted dialog) → the golden recipe by hand in the window (`app.edit.RecipeThroughPanelsTest.configure`: Autoassignment, typed H counts, Autoconfigure in the profile's order, untick, New schedule) → dataset equal to `GuiRecipe.prepare(..., DEFAULT)` record by record → "Add run slot" *s* times, select row *s*, "Start as selected" (seed *s* via the hook) → result equal to `golden/runs/<key>.<profile>.seed<s>.json` (status, iterations, random draws, kT, best score and structure, every result) and shown by the GUI (table row, best-structure drawing, evaluation, Summarize tiles, Logbook). Runs: pinene gui/paper seed 1, eurabidiol gui/paper seed 1, polycarpol paper seed 2 (`slow`). (2) the GUI run path without the editing panels (recipe-prepared dataset, the window's `RunController`, `AppContext.runOptions`, `EdtRunListener`, Logbook, and log files) |
 | `GoldenRunAssert` | comparison of a `RunResult` with a golden run record (status, termination, enabled judges, counters, kT, best, every result's score/hash/description) |
 | `AppUnitTest` | `TestHooks`, `DatasetCollection`, `EdtRunListener` ordering/coalescing, `LogFiles` layouts, preferences, resources |
-| `AppHygieneTest` | no legacy imports, RMI or random sources in `app`; no `System.exit`, dialogs, frames, file choosers or system clipboard outside `app.ui` |
+| `AppHygieneTest` | no legacy imports, RMI, or random sources in `app`; no `System.exit`, dialogs, frames, file choosers, or system clipboard outside `app.ui` |
 
 ### 10.3 Hidden test hooks (`TestHooks`)
 
 `-Dseneca.seed=<base>`: the run in slot `local<k>` uses seed `base + k` (three slots with
-`seneca.seed=1` reproduce golden seeds 1, 2, 3). `-Dseneca.iterationCap=<n>`: the golden harness's cap
-(golden runs: 5,000,000). Both are applied only by `AppContext.runOptions(slot)`; G2 must start every
-run with those options. Also settable for the real app (`JAVA_OPTS` of `scripts/run-app.sh`).
+`seneca.seed=1` reproduce golden seeds 1, 2, and 3). `-Dseneca.iterationCap=<n>`: the golden harness's cap
+(golden runs: 5,000,000). Only `AppContext.runOptions(slot)` applies them; G2 must start every
+run with those options. The real app accepts them too (`JAVA_OPTS` of `scripts/run-app.sh`).
 
 ### 10.4 Component names (`ComponentNames`)
 
 Every control the scripted tests drive carries a fixed `setName`. The list in `ComponentNames` is part
-of this contract; per-judge names append the judge class simple name, per-spectrum names the
-`SpectrumSlot` key. G1/G2 set them all (add names there if needed, never rename).
+of this contract; per-judge names append the judge class's simple name, and per-spectrum names the
+`SpectrumSlot` key. G1/G2 set them all (add names there if needed; never rename them).
 
 ### 10.5 Renderings and the legacy comparison
 
 - `mvn -o -Dbuild.dir=<dir> test -Dtest='Gui*'` → `<dir>/gui-shots/*.png` (Metal: headless Aqua paints
   without native bezels and with translucent title bars, so headless renderings use the cross-platform
-  look and feel; `-Dseneca.test.laf=<class>` overrides).
+  look and feel; `-Dseneca.test.laf=<class>` overrides it).
 - `... -Dseneca.headless=false -Dseneca.guishots=<dir>/gui-shots-aqua` → the same renderings in Aqua:
   every component is hosted in a hidden, never shown frame (peer without a window on screen;
   `apple.awt.UIElement=true` keeps the JVM out of the Dock).
@@ -351,74 +351,70 @@ of this contract; per-judge names append the judge class simple name, per-spectr
   the port's renderings when implementing a panel; put both side by side in the review.
 - `scripts/legacy-run-shots.sh [outDir] [file.sml] [seed] [slots]` (G2) → a seeded 2001 run in the
   "Structure Generation" tab: `legacy-run-*.png` (tab after the run, chart in score and kT mode),
-  `legacy-structure-display.png` (the "Summarize Result" tiles drawn by jmdraw), `legacy-logbook.png`, and the
-  Logbook text, stdout of "Log Annealing Data", the Summarize tiles and the three log files as text. The
+  `legacy-structure-display.png` (the "Summarize Result" tiles drawn by jmdraw), `legacy-logbook.png`, and, as
+  text, the Logbook, the stdout of "Log Annealing Data", the Summarize tiles, and the three log files. The
   port's counterparts are the `runs-*` renderings of `app.runs`.
 - `scripts/run-app.sh [file.sml]` starts the real application (`BUILD_DIR`, `JAVA_OPTS`); for a quick
-  look use `JAVA_OPTS="-Dseneca.logdir=<scratch> -Duser.home=<scratch>"` and kill it afterwards.
+  look, use `JAVA_OPTS="-Dseneca.logdir=<scratch> -Duser.home=<scratch>"` and kill it afterwards.
 
 ## 11. Threading
 
 - **EDT**: all Swing, all dataset edits, `RunInput.fromDataset`, opening/saving files (small; the 2001
-  client did the same), Summarize (`RunController.summarize` is fast) and the depiction of its results
+  client did the same), Summarize (`RunController.summarize` is fast), and the depiction of its results
   (lay out lazily per tile if slow).
 - **Run threads** (one per run, created by the core): never touch Swing. They reach the GUI only through
-  (a) `RunListener` registered as `new EdtRunListener(target)` — callbacks are queued and delivered on
-  the EDT in order, status coalesced per slot; and (b) `AppEngineLog` (Logbook appends are queued to the
+  (a) `RunListener` registered as `new EdtRunListener(target)`, which queues callbacks, delivers them on
+  the EDT in order, and coalesces status per slot; and (b) `AppEngineLog` (Logbook appends are queued to the
   EDT; file writes are synchronized).
 - **Control thread** (`AppContext.control`, one daemon thread `seneca-control`): `RunController.start`,
-  `reset`, `clear` (they stop and join a run for up to 30 s). Results go back with `invokeLater`; tests
-  wait with `AppContext.awaitControl`. `stop` may be called on the EDT (does not wait).
+  `reset`, and `clear` (they stop and join a run for up to 30 s). Results go back with `invokeLater`; tests
+  wait with `AppContext.awaitControl`. `stop` may be called on the EDT (it does not wait).
 - **Polling**: `javax.swing.Timer` (EDT) reads thread-safe snapshots (`RunSlot.status()`,
   `annealingLogSince`, `result()`).
-- **Exit**: `AppContext.shutdown()` asks every run to stop (no join: run threads are daemons, every log
-  write is flushed), closes the log files; then the exit hook (`System.exit(0)`).
+- **Exit**: `AppContext.shutdown()` asks every run to stop (no join: run threads are daemons, and every log
+  write is flushed) and closes the log files; then the exit hook runs (`System.exit(0)`).
 
 ## 12. GUI deviations from 2001 (DV-70 onwards; DEVIATIONS.md points here)
 
-None of these changes a score, a search or a golden record.
+None of these changes a score, a search, or a golden record.
 
 | ID | 2001 | Port | Why |
 |---|---|---|---|
 | DV-70 | "New Dataset": no judges, no schedule (D10) | `SenecaDataset.newDataset`: `init()` + default schedule | the dataset could not be run |
 | DV-71 | close → "Yes" writes CML (D11) | writes SML (as File ▸ Save), then closes | CML output not well-formed, no reader |
-| DV-72 | Save writes the name verbatim, no overwrite prompt | `.sml` appended if no extension; the native dialog asks before replacing the name as typed; when `.sml` was appended afterwards and that file exists, the application asks ("… already exists. Do you want to replace it?", also for `.sdf` in Structure Display ▸ Save SDF) | data loss |
+| DV-72 | Save writes the name verbatim, no overwrite prompt | `.sml` appended if the name has no extension; the native dialog asks before replacing the name as typed; when the application appended `.sml` afterwards and that file exists, it asks ("… already exists. Do you want to replace it?", also for `.sdf` in Structure Display ▸ Save SDF) | data loss |
 | DV-73 | the current dataset changes only on open/new and via Datasets ▸ switch (which does not raise the window); collection `remove` notifies before removing; switch by name picks the first of equal names | activating a window makes its dataset current; switch raises the window; switch by index; `remove` notifies after removing | Save could target an invisible dataset |
-| DV-74 | Edit menu items Copy/Cut/Paste, Compound Properties, Spectra, Connectivity Matrix, Node Table, Annealing Properties, Score Evaluators; View ▸ Status of Generator Threads; Calculate ▸ Start; File ▸ Export, Print, unlabeled Open item (all disabled or no-ops) | omitted (Calculate menu gone) | DROP items of the inventory |
+| DV-74 | Edit menu items Copy/Cut/Paste, Compound Properties, Spectra, Connectivity Matrix, Node Table, Annealing Properties, Score Evaluators; View ▸ Status of Generator Threads; Calculate ▸ Start; File ▸ Export, Print, unlabelled Open item (all disabled or no-ops) | omitted (Calculate menu gone) | DROP items of the inventory |
 | DV-75 | Look&Feel: Windows, Motif, Java (missing classes), Metal | installed look and feels; system L&F at start | F-05, F-29 |
 | DV-76 | toolbar openAll/saveAll without tooltip (key mismatch) | "Open a file", "Save to a file" (texts from the 2001 properties); ⌘N/⌘O/⌘S | usability |
 | DV-77 | About: version 0.8b, MPI e-mail and web address | original credit lines, citation, port version line | addresses obsolete |
-| DV-78 | preferences `~/seneca.props`, default directory "/" | `~/Library/Application Support/io.github.steinbeck.seneca/seneca.props` (macOS; the folder is named after the bundle id because another SENECA program on the same Mac uses `Application Support/Seneca`, whose saved directories steered this application's dialogs), default home; a remembered directory that no longer exists is ignored | macOS location |
+| DV-78 | preferences `~/seneca.props`, default directory "/" | `~/Library/Application Support/io.github.steinbeck.seneca/seneca.props` (macOS; the folder is named after the bundle id because another SENECA program on the same Mac uses `Application Support/Seneca`, whose saved directories steered this application's dialogs), default home; the application ignores a remembered directory that no longer exists | macOS location |
 | DV-79 | dataset frames always fill the desktop (BorderLayout) | open maximized; can be un-maximized | KEEP-ADAPT F-13 |
 | DV-80 | one Logbook text pane, moved into the newest dataset frame | every Logbook tab views the same document | the pane vanished from older frames |
-| DV-81 | closing a dataset leaves its runs running | runs are stopped (as Reset/Clear, DV-25) | orphaned threads |
-| DV-82 | "Server Admin" group, "Start local server", "Update server list", "Clear Server List"; north text field | "Run Slots", "Add run slot", "Clear Slot List"; no update button, no north field. Slot ids as 2001: `local0`, `local1`, ...; after "Clear Slot List" the numbering restarts at `local0` (`RunController.clear`), so the seed hook again gives row k the seed base + k − 1 | RMI dropped |
+| DV-81 | closing a dataset leaves its runs running | closing stops the runs (as Reset and Clear do, DV-25) | orphaned threads |
+| DV-82 | "Server Admin" group, "Start local server", "Update server list", "Clear Server List"; north text field | "Run Slots", "Add run slot", "Clear Slot List"; no update button, no north field. Slot ids as in 2001: `local0`, `local1`, ...; after "Clear Slot List", the numbering restarts at `local0` (`RunController.clear`), so the seed hook again gives row k the seed base + k − 1 | RMI dropped |
 | DV-83 | errors only on stdout/stderr (unreadable file, failed start, failed autoconfigure; a 2D judge whose assignment fails prints "Assignment failed." and stays inactive) | also a message dialog (failed 2D assignment: the same stdout line plus a warning "Assignment failed: ... stays inactive" with what it needs) | the user sees nothing otherwise |
 | DV-84 | Structure Display: no SDF export, no copy | "Save SDF", copy of a tile | requested additions |
-
-| DV-85 | dataset editing tabs (G1): (a) "Add Signal" / "Paste WinNMR pp" on a spectrum read empty from SML (dim 0, no axes) give signals without shifts; (b) committing the "Molecular Formula" cell, even unchanged, regenerates the atoms (all H counts and shift assignments lost); an empty formula throws after storing ""; (c) "Delete Signal" without a selection, a non-numeric "Assigned 13C Shift" or "Molecular Mass" throw on the event thread; (d) "Carbon Shifts" table and the shift/numbering columns of the judge tables are editable but discard the edit; (e) Symmetry table `Symb.` shows the symbol of the atom whose index is the class number; (f) stored molecular mass shown widened to double ("136.1251983642578"); (g) report window without scroll bars, editable; (h) the H balance (with its side effect, undefined H → 0 when balanced) runs only when the Atom Properties table paints | (a) the spectrum first gets the slot's axes (`NMRSpectrum.ensureAxes`, DEFAULT); (b) an unchanged formula changes nothing, an empty one is refused with a message; (c) ignored (no selection / not a number); (d) read-only; (e) symbol of the class's first member (the `Shift` column already used it); (f) shown as float; (g) scroll pane, read-only; (h) also when the window opens, after Autoassignment and on dataset changes | data loss / crash / misleading display; none changes a recipe result (`app.edit.RecipeThroughPanelsTest`: all 10 datasets × gui/paper/manual/all equal `GuiRecipe` and the echo file) |
-
-| DV-86 | run and results UI (G2): (a) every "Start local server" re-configured log4j (`logging.server.properties`) and so truncated the three log files again; (b) Host column = the machine's host name (`InetAddress.getLocalHost()`); (c) the timer refreshed one table row per 2-s tick; (d) chart: series allocated once for the slots existing at the first data, a later slot's data were lost (exception in the timer); after a click the kT values appeared only at the next poll; the frame title changed from "Annealing Data" to "Annealing data" at the first poll; without data one series "no data" with an invisible point at (1, 1); (e) "Log Annealing Data" without data: NullPointerException on the event thread; (f) "Save MDL" wrote jmdraw's layout coordinates; a file that could not be read or drawn aborted "Load MDL"/"Load LUCY Result"; (g) Structure Display 600 px wide including the scroll bar (one tile per row once the bar appears); (h) the best-structure drawing and every tile drawn by jmdraw | (a) truncated once, at application start (runs of other slots keep their log); (b) "local"; (c) every row each tick, plus run-listener updates in between; cells read-only; (d) series grow with the slots; the click redraws at once; the title stays "Annealing Data"; "no data" is an empty series; "max. Score" is drawn as one horizontal segment over the iterations shown; (e) nothing is written; (f) CDK 2D layout coordinates (`chem.CdkBridge.layout2D`, bond length 1.5), the molfile format is the legacy one; such a file gets a tile with its name and an empty area (logged); (g) wide enough for two tiles plus the scroll bar; (h) CDK layout (improved by `chem.Layout2D`, DV-88) and depiction (section 8): 80 % of the area (at most 3× the standard bond length), black on white, carbons unlabelled except where CDK's standard style labels them (the middle carbon of cumulated double bonds, C=C=C, C=C=O), other atoms with their H, no stereo marks | bugs / RMI / jmdraw replaced; nothing changes a run, a score or a file format (`app.runs.RunPanelTest`: GUI runs = golden runs; Logbook and the three files = a 2001 run) |
-
+| DV-85 | dataset editing tabs (G1): (a) "Add Signal" / "Paste WinNMR pp" on a spectrum read empty from SML (dim 0, no axes) give signals without shifts; (b) committing the "Molecular Formula" cell, even unchanged, regenerates the atoms (all H counts and shift assignments lost); an empty formula throws after storing ""; (c) "Delete Signal" without a selection, a non-numeric "Assigned 13C Shift", and a non-numeric "Molecular Mass" each throw on the event thread; (d) the "Carbon Shifts" table and the shift/numbering columns of the judge tables are editable but discard the edit; (e) the Symmetry table's `Symb.` column shows the symbol of the atom whose index is the class number; (f) stored molecular mass shown widened to double ("136.1251983642578"); (g) report window without scroll bars, editable; (h) the H balance (with its side effect, undefined H → 0 when balanced) runs only when the Atom Properties table paints | (a) the spectrum first gets the slot's axes (`NMRSpectrum.ensureAxes`, DEFAULT); (b) an unchanged formula changes nothing, and an empty one is refused with a message; (c) ignored (no selection / not a number); (d) read-only; (e) symbol of the class's first member (the `Shift` column already used it); (f) shown as float; (g) scroll pane, read-only; (h) also when the window opens, after Autoassignment, and on dataset changes | data loss / crash / misleading display; none changes a recipe result (`app.edit.RecipeThroughPanelsTest`: all 10 datasets × gui/paper/manual/all equal `GuiRecipe` and the echo file) |
+| DV-86 | run and results UI (G2): (a) every "Start local server" reconfigured log4j (`logging.server.properties`) and so truncated the three log files again; (b) Host column = the machine's host name (`InetAddress.getLocalHost()`); (c) the timer refreshed one table row per 2-s tick; (d) chart: series allocated once for the slots existing at the first data; a later slot's data were lost (exception in the timer); after a click, the kT values appeared only at the next poll; the frame title changed from "Annealing Data" to "Annealing data" at the first poll; without data one series "no data" with an invisible point at (1, 1); (e) "Log Annealing Data" without data: NullPointerException on the event thread; (f) "Save MDL" wrote jmdraw's layout coordinates; a file that could not be read or drawn aborted "Load MDL"/"Load LUCY Result"; (g) Structure Display 600 px wide including the scroll bar (one tile per row once the bar appears); (h) the best-structure drawing and every tile drawn by jmdraw | (a) truncated once, at application start (runs of other slots keep their log); (b) "local"; (c) every row each tick, plus run-listener updates in between; cells read-only; (d) series grow with the slots; the click redraws at once; the title stays "Annealing Data"; "no data" is an empty series; "max. Score" is drawn as one horizontal segment over the iterations shown; (e) nothing is written; (f) CDK 2D layout coordinates (`chem.CdkBridge.layout2D`, bond length 1.5) in the legacy molfile format; such a file gets a tile with its name and an empty area (logged); (g) wide enough for two tiles plus the scroll bar; (h) CDK layout (improved by `chem.Layout2D`, DV-88) and depiction (section 8): 80 % of the area (at most 3× the standard bond length), black on white, carbons unlabelled except where CDK's standard style labels them (the middle carbon of cumulated double bonds, C=C=C, C=C=O), other atoms with their H, no stereo marks | bugs / RMI / jmdraw replaced; nothing changes a run, a score, or a file format (`app.runs.RunPanelTest`: GUI runs = golden runs; Logbook and the three files = a 2001 run) |
 | DV-87 | examples only in the distribution's `sml/` folder; the Open dialog starts at "/" (2001) or the last directory; the application takes one argument (a file) | File ▸ Open ▸ **Example Dataset** ▸ the ten bundled datasets (`app.Examples`, directory `-Dseneca.examples`, in `Seneca.app`: `Contents/app/examples`); the first Open dialog starts there; options `--logdir=`, `--examples=`, `--seed=`, `--iteration-cap=`, `--smoke[=report]` (`SenecaApp`, section 15); the packaged application keeps its bundle icon in the Dock instead of the 2001 logo | requested additions; the options make the packaged app testable without JVM options |
-
-| DV-88 | layout and display (found by the visual review): (a) main window 800x600: with the macOS look and feel the dataset window's tab row and the Judges sub-tabs did not fit ("Structure Generation" and "Logbook" behind an overflow arrow); (b) run tab: seven equal table columns (dataset, formula, status, iteration count cut off), best structure about 370x115 px, fixed boxes; (c) judge matrices (one column per atom) squeezed into the window, headers "..." from about 25 atoms on; (d) chart: series colours of the chart library by position ("max. Score" pure yellow on white with three slots), a maximum score of 0 gave y labels like "4E-9"; (e) every Structure Display window titled "Structure Display"; (f) jmdraw layouts (CDK's plain layout drew e.g. the gem-dimethyl bonds of the pinene result's norbornene bridge across its C=C bond) | (a) `MainView.DEFAULT_SIZE` 1120x780, reduced to the usable screen; `app.DefaultLayoutTest` checks that every tab lies inside its tab pane; (b) column widths by content, cell tooltips; table/chart and drawing/evaluation in split panes (movable dividers); a double click on the best structure opens it in a Structure Display window; (c) `ui.MatrixTable`: columns as wide as their header, horizontal scroll bar, header tooltips; (d) fixed dark palette (red and blue first, as 2001), "max. Score" dashed black, y axis spans at least 1; (e) "Structure Display - <dataset name>" for Summarize Result and the double click (View ▸ Current Structures keeps "Structure Display"); (f) `chem.Layout2D`: CDK's layout scored by bond crossings, crowded atoms, atoms on bonds and substituents drawn inside rings; if not clean, 8 more atom orders and a rotation of substituents about their acyclic bonds, the best layout wins (deterministic; a clean CDK layout is kept exactly; `chem.Layout2DTest`). Overlaps, drawings that read as a different constitution (non-bonded atoms closer than 0.3 bond lengths, an atom within 0.2 bond lengths of the inner part of a bond it does not belong to), cost more than any crossings they save; where they remain, a short deterministic relaxation pushes the atoms apart (bond lengths kept, every atom held near its place) and the result is kept if it scores better. Plain CDK had such overlaps in 34 of the 56 golden best structures (e.g. two ring atoms of monochaetin and triterpen drawn on one spot); after `Layout2D` none has two non-bonded atoms closer than 0.2 bond lengths or an atom within 0.12 bond lengths of a foreign bond (`Layout2DTest.goldenBestStructuresHaveNoOverlaps`, the cages included; at most ~0.1 s per structure). Cage-like random results (Hyperaspine, bn-ye1 with 17–26 rings) still have many crossing bonds: no 2D layout of them is clean | usability; nothing changes a run, a score or a file format |
-| DV-89 | – (2001 predates App Nap) | while a run is going on, the application asks macOS not to throttle it (`NSProcessInfo beginActivityWithOptions: NSActivityUserInitiatedAllowingIdleSystemSleep` via the Foreign Function API, `app.MacActivity`, driven by `app.RunActivity` over all windows' run controllers; JVM option `--enable-native-access=ALL-UNNAMED`); ended when the last run ends | measured: a run in a background app took about 4× as long (narelin, 400,000 iterations: 93 s instead of 41 s); `LSAppNapIsDisabled` in Info.plist does not help |
-| DV-90 | Logbook: every engine message appended as it comes, the whole log kept; with several runs at once the two halves of a progress line ("Iteration: n ", "Current kT = ...\n") of different runs interleave | each run's messages are collected up to the newline and appended as whole lines (`AppEngineLog`; a single run's text is unchanged); consecutive messages inserted together; the Logbook keeps the newest ~1 MB (oldest whole lines dropped at 1,000,000 characters down to 750,000); `seneca.log` keeps everything as before | the port's engine writes the log many times faster (27 MB in 200 s for one long run): the Swing thread spent most of its time laying out the growing text |
-| DV-91 | – | macOS application menu "Settings…" opens the Look&Feel choice of Edit ▸ Preferences ▸ Look&Feel as a dialog (`AppActions.showPreferences`) | the entry was dead otherwise |
-| DV-92 | (a) the Logbook tab opened at the top of the text, and new text did not scroll it; (b) Structure Display: tiles of 300x200 at the top left, the rest of the window grey only as far as the rows reach (2001: one tile per window too, e.g. the best structure) | (a) the Logbook follows the end of the text like a terminal: while the view is at the bottom (initially, or scrolled back down), growing text, a resized window or the tab being shown keep it at the bottom; scrolled up, the view stays (`app.log.LogbookPanel`, `app.LogbookTest`); (b) a window with a single structure (double click on the best structure, one Load MDL file) draws it as large as the window; the tile panel always fills the window (`app.runs.StructureDisplayTest`) | the end of a run is what the user looks for; the double-click window was meant to enlarge the drawing |
-| DV-93 | "Start as selected" started any dataset, also one whose enabled judges can score nothing (e.g. a file without shift assignments opened and "Autoconfigure Judge" pressed without "Autoassignment"): maximum score 0, every score 0, start_kT = -0.0, every new structure logged as a new best (a user run of monochaetin wrote 340 MB of logs in 3 minutes) | the app refuses to start when `RunInput.maxScore()` is 0 and says what to do first (`RunInput.NO_SCORE`; `StructureGenerationPanel.startSelected`, `app.runs.RunControlTest.startRefusesADatasetWhoseMaximumScoreIsZero`). Only the app: the engine and the CLI still run such inputs as legacy did, so the golden bn-ye1 runs (maximum 0) are unchanged | decided by the user on 2026-10-02 after falling into the trap |
+| DV-88 | layout and display (found by the visual review): (a) main window 800x600: with the macOS look and feel, the dataset window's tab row and the Judges sub-tabs did not fit ("Structure Generation" and "Logbook" behind an overflow arrow); (b) run tab: seven equal table columns (dataset, formula, status, and iteration count cut off), best structure about 370x115 px, fixed boxes; (c) judge matrices (one column per atom) squeezed into the window, headers "..." from about 25 atoms on; (d) chart: series colours of the chart library by position ("max. Score" pure yellow on white with three slots), and a maximum score of 0 gave y labels like "4E-9"; (e) every Structure Display window titled "Structure Display"; (f) jmdraw layouts (CDK's plain layout drew e.g. the gem-dimethyl bonds of the pinene result's norbornene bridge across its C=C bond) | (a) `MainView.DEFAULT_SIZE` 1120x780, reduced to the usable screen; `app.DefaultLayoutTest` checks that every tab lies inside its tab pane; (b) column widths by content, cell tooltips; table/chart and drawing/evaluation in split panes (movable dividers); a double click on the best structure opens it in a Structure Display window; (c) `ui.MatrixTable`: columns as wide as their header, horizontal scroll bar, header tooltips; (d) fixed dark palette (red and blue first, as in 2001), "max. Score" dashed black, y axis spans at least 1; (e) "Structure Display - <dataset name>" for Summarize Result and the double click (View ▸ Current Structures keeps "Structure Display"); (f) `chem.Layout2D`: CDK's layout scored by bond crossings, crowded atoms, atoms on bonds, and substituents drawn inside rings; if the layout is not clean, 8 more atom orders and a rotation of substituents about their acyclic bonds are tried, and the best layout wins (deterministic; a clean CDK layout is kept exactly; `chem.Layout2DTest`). Overlaps, drawings that read as a different constitution (non-bonded atoms closer than 0.3 bond lengths, an atom within 0.2 bond lengths of the inner part of a bond it does not belong to), cost more than any crossings they save; where they remain, a short deterministic relaxation pushes the atoms apart (bond lengths kept, every atom held near its place), and the result is kept if it scores better. Plain CDK had such overlaps in 34 of the 56 golden best structures (e.g. two ring atoms of monochaetin and triterpen drawn on one spot); after `Layout2D`, none has two non-bonded atoms closer than 0.2 bond lengths or an atom within 0.12 bond lengths of a foreign bond (`Layout2DTest.goldenBestStructuresHaveNoOverlaps`, the cages included; at most ~0.1 s per structure). Cage-like random results (Hyperaspine, bn-ye1 with 17–26 rings) still have many crossing bonds: no 2D layout of them is clean | usability; nothing changes a run, a score, or a file format |
+| DV-89 | – (2001 predates App Nap) | while a run is going on, the application asks macOS not to throttle it (`NSProcessInfo beginActivityWithOptions: NSActivityUserInitiatedAllowingIdleSystemSleep` via the Foreign Function API, `app.MacActivity`, driven by `app.RunActivity` over all windows' run controllers; JVM option `--enable-native-access=ALL-UNNAMED`); the activity ends when the last run ends | measured: a run in a background app took about 4× as long (narelin, 400,000 iterations: 93 s instead of 41 s); `LSAppNapIsDisabled` in Info.plist does not help |
+| DV-90 | Logbook: every engine message appended as it comes, the whole log kept; with several runs at once, the two halves of a progress line ("Iteration: n ", "Current kT = ...\n") of different runs interleave | `AppEngineLog` collects each run's messages up to the newline and appends them as whole lines (a single run's text is unchanged); consecutive messages are inserted together; the Logbook keeps the newest ~1 MB (oldest whole lines dropped at 1,000,000 characters down to 750,000); `seneca.log` keeps everything as before | the port's engine writes the log many times faster (27 MB in 200 s for one long run): the Swing thread spent most of its time laying out the growing text |
+| DV-91 | – | macOS application menu "Settings…" opens the Look&Feel choice of Edit ▸ Preferences ▸ Look&Feel as a dialog (`AppActions.showPreferences`) | otherwise the entry did nothing |
+| DV-92 | (a) the Logbook tab opened at the top of the text, and new text did not scroll it; (b) Structure Display: tiles of 300x200 at the top left, the rest of the window grey only as far as the rows reach (2001: one tile per window too, e.g. the best structure) | (a) the Logbook follows the end of the text like a terminal: while the view is at the bottom (initially, or scrolled back down), growing text, a resized window, or the tab being shown keeps it at the bottom; scrolled up, the view stays (`app.log.LogbookPanel`, `app.LogbookTest`); (b) a window with a single structure (double click on the best structure, one Load MDL file) draws it as large as the window; the tile panel always fills the window (`app.runs.StructureDisplayTest`) | the end of a run is what the user looks for; the double-click window was meant to enlarge the drawing |
+| DV-93 | "Start as selected" started any dataset, even one whose enabled judges can score nothing (e.g. a file without shift assignments opened and "Autoconfigure Judge" pressed without "Autoassignment"): maximum score 0, every score 0, start_kT = -0.0, and every new structure logged as a new best (a user run of monochaetin wrote 340 MB of logs in 3 minutes) | the app refuses to start a run when `RunInput.maxScore()` is 0 and says what to do first (`RunInput.NO_SCORE`; `StructureGenerationPanel.startSelected`, `app.runs.RunControlTest.startRefusesADatasetWhoseMaximumScoreIsZero`). Only the app refuses: the engine and the CLI still run such inputs as legacy did, so the golden bn-ye1 runs (maximum 0) are unchanged | decided by the user on 2026-10-02 after falling into the trap |
 
 Add further GUI deviations here (next free: DV-94) with the same columns.
 
 ## 13. Work split
 
-Both implementers: read this document, `feature-inventory.md` sections 2–7 and the legacy sources of
+Both implementers: read this document, `feature-inventory.md` sections 2–7, and the legacy sources of
 their classes; render the legacy windows (`scripts/legacy-gui-shots.sh`) and compare. Use a private build
-dir (`mvn -o -Dbuild.dir=$PWD/target-<name> test`). Edit only your files; shared files (`pom.xml`,
+dir (`mvn -o -Dbuild.dir=$PWD/target-<name> test`). Edit only your files; edit shared files (`pom.xml`,
 `ComponentNames`, `Seneca.properties`, this document, `GuiTestSupport`, `ScriptedUi`, `AppContext`,
-`DatasetFrame`, `MainView`, `AppActions`) only minimally, and report every such change. Core additions:
-minimal, with a unit test, reported. No commits.
+`DatasetFrame`, `MainView`, `AppActions`) only minimally, and report every such change. Keep core additions
+minimal, add a unit test for each, and report them. Do not commit.
 
 ### G1 – dataset editing UI
 
@@ -435,7 +431,7 @@ Files (own): `app/dataset/GeneralSettingsPanel.java`, `app/dataset/AtomPropertie
    combo "Import peak picking" with "Paste WinNMR pp from clipboard" (`WinNmrPeakPicking.paste(text,
    spectrum, DEFAULT)`, text from `app.ui.clipboard()`); GIFA dropped.
 3. Atom Properties (F-42): both tables, "Autoassignment" (`AtomProperties.autoassign(sd, DEFAULT)`; on
-   `false` a message), H balance label (red/dark green) — call `AtomProperties.balance(sd)` wherever the
+   `false` a message), H balance label (red/dark green); call `AtomProperties.balance(sd)` wherever the
    2001 table rendered or was edited (its side effect sets undefined H counts to 0 when balanced).
 4. Annealing Schedule (F-43): bind to `new ScheduleConfiguration(sd, DEFAULT)`; list renders
    `A-F:<cool>-IAP:<p0>-PS:<plateau>-UHS: <uphill>`; `NumberFormatException` of Update → message.
@@ -444,19 +440,19 @@ Files (own): `app/dataset/GeneralSettingsPanel.java`, `app/dataset/AtomPropertie
    "Autoconfigures <name>"), "Report Judgeconfig", checkbox "Activate this Judge?" reflecting programmatic
    changes) and the 7 centre panels as in the inventory, all edits through `JudgeConfiguration`; the report
    window "Judge Configuration Report" via `WindowHost` with `JudgeConfiguration.report(judge)` (non-2D
-   judges: nothing, as 2001). Autoconfigure exceptions (STRICT only) cannot occur in DEFAULT; a `false`
-   result unticks the checkbox (model already updated by the core).
+   judges: nothing, as in 2001). Autoconfigure exceptions (STRICT only) cannot occur in DEFAULT; a `false`
+   result unticks the checkbox (the core has already updated the model).
 6. Files (F-21, F-22, F-24, F-48, F-02): complete `DatasetFileActions`: open with error dialog (DV-44,
    DV-83), save (current dataset, `SpecMLWriter.write(sd, DEFAULT)`, UTF-8, `.sml` appended, DV-72),
    import LUCY (`LucyDatasetImporter.read(path, DEFAULT, log)`, chooser at the LUCY directory, filter
-   `*.col` "Lucy datasets"), close prompt Yes = save then `frame.close()` (DV-71); remember directories in
+   `*.col` "Lucy datasets"), and close prompt Yes = save then `frame.close()` (DV-71); remember directories in
    `AppPreferences`.
 7. Component names from `ComponentNames` on every control; tests (scripted, headless) for each panel
-   incl. the README tutorial (eurabidiol: Autoassignment leaves 2 H unassigned, type 1 into O-16 and O-17
+   including the README tutorial (eurabidiol: Autoassignment leaves 2 H unassigned, type 1 into O-16 and O-17
    → green) and renderings `shot(...)` of every panel; compare with the legacy renderings.
 
 Done when: `GuiEndToEndTest.pineneGuiRecipeThroughTheGuiReproducesGoldenSeed1` passes up to the
-Structure Generation step (the dataset equals the recipe's), every G1 item of section 4.2 has a test.
+Structure Generation step (the dataset equals the recipe's), and every G1 item of section 4.2 has a test.
 
 ### G2 – run and results UI
 
@@ -484,7 +480,7 @@ Files (own): `app/run/**`, `app/structure/**`, `app/log/**`; tests
    renderings of every view.
 
 Done when: `GuiEndToEndTest.pineneGuiRecipeThroughTheGuiReproducesGoldenSeed1` passes completely (with
-G1), every G2 item of section 4.2 has a test, the fast suite and `-Pslow,oracle` are green.
+G1), every G2 item of section 4.2 has a test, and the fast suite and `-Pslow,oracle` are green.
 
 ## 14. Status of the skeleton (architect)
 
@@ -492,8 +488,8 @@ Implemented and tested: main window, menus, toolbar, status bar, dataset collect
 dataset window with all tabs (placeholders for G1/G2), close prompt (No/Cancel), New Dataset, Open SENECA
 Dataset, About, Exit, Look&Feel switching, macOS integration (About/Quit/open-file/Dock/default menu
 bar), `UiServices` with native and scripted implementations, `EdtRunListener`, test hooks, Logbook and
-log files (working first versions, owned by G2), preferences, resources; test harness, smoke test,
-renderings, legacy rendering tool, launcher script. Pending: everything marked G1/G2 above (placeholders
+log files (working first versions, owned by G2), preferences, and resources; test harness, smoke test,
+renderings, legacy rendering tool, and launcher script. Pending: everything marked G1/G2 above (placeholders
 say "pending: G1"/"pending: G2").
 
 **G1 (dataset editing), done.** All G1 items of 4.2 are implemented: General Settings, NMR Spectra
@@ -502,50 +498,50 @@ say "pending: G1"/"pending: G2").
 (open with error dialog, save as SML, LUCY import, close with Yes = save). Tests in `app.edit`:
 `RecipeThroughPanelsTest` drives the golden recipe through the panels for all 10 datasets × gui/paper/manual/all
 (plus polycarpol@hblock) and compares every configured record with `GuiRecipe` (DEFAULT) and with the echo
-file (STRICT); one test class per panel, `EmptyDatasetTest`, renderings `edit-*` and `recipe-*`. Core
-additions: `NMRSpectrum.ensureAxes` (DV-85), `EchoRecords.configuredRecords` (test comparison),
+file (STRICT); one test class per panel, `EmptyDatasetTest`, and renderings `edit-*` and `recipe-*`. Core
+additions: `NMRSpectrum.ensureAxes` (DV-85), `EchoRecords.configuredRecords` (test comparison), and
 `HMBCAssigner` DEFAULT on a dataset without atoms (DV-46).
 
 **G2 (runs and results), done.** All G2 items of 4.2 are implemented. `app.run`: `StructureGenerationPanel`
 (layout, button groups, Start/Stop/Reset/Clear through the control thread, input messages, 2-s round-robin
-polling, `EdtRunListener`), `RunTableModel`, `AnnealingData` (chart data, "Log Annealing Data" table),
+polling, `EdtRunListener`), `RunTableModel`, `AnnealingData` (chart data, "Log Annealing Data" table), and
 `AnnealingChartPanel` (JFreeChart, click toggles score/kT). `app.structure`: `Depictions` (MDL / LUCY →
 `CdkBridge.layout2D` → CDK depiction), `StructureView`, `StructureDisplayPanel` (tiles, Load MDL, Load LUCY
-Result, Save MDL, Save SDF, Copy, Close), `StructureTransferable`. `app.log`: Logbook style of 2001,
+Result, Save MDL, Save SDF, Copy, Close), and `StructureTransferable`. `app.log`: Logbook style of 2001 and
 FATAL console line in `AppEngineLog`. Tests in `app.runs`: `RunPanelTest` (seeds 1 and 3 in rows 1 and 3
 against golden / the core's DEFAULT run; table, best structure, evaluation, chart in both modes, Summarize,
 Log Annealing Data; outputs identical to a 2001 run), `RunControlTest` (stop, reset, restart on a running slot,
 clear, window close; messages for inputs that cannot run), `StructureDisplayTest` (depiction fit, load,
-Save MDL byte format, Save SDF, copy), `AnnealingDataTest`, `RunPanelSlowTest` (`slow`: seeds 1–3 in three
+Save MDL byte format, Save SDF, copy), `AnnealingDataTest`, and `RunPanelSlowTest` (`slow`: seeds 1–3 in three
 slots, golden seeds 1 and 2); renderings `runs-*`. Core addition: `chem.CdkBridge.layout2D` (`chem.CdkLayoutTest`).
-Component names added: `STRUCTURE_SAVE_SDF`, `STRUCTURE_COPY`, `STRUCTURE_TILES`, `STRUCTURE_TILE`.
+Component names added: `STRUCTURE_SAVE_SDF`, `STRUCTURE_COPY`, `STRUCTURE_TILES`, and `STRUCTURE_TILE`.
 Deviations: DV-86.
 
 **Integration, done.** `GuiEndToEndTest` drives five golden runs end to end through the GUI (open, recipe
 by hand, seeded run, results) and finds them identical to golden/runs: pinene and eurabidiol with "gui" and
-"paper" (seed 1), polycarpol with "paper" (seed 2, `slow`; polycarpol "gui" has no complete golden run, the
-2001 ring finder crashed in every seed). Additions: Example Dataset menu, command-line options and the
-self-test (DV-87), packaging (section 15). Fixes found on the way: `cdk-standard` is a runtime dependency
-of cdk-ctab/-smiles/-sdg/-depict and was demoted to test scope by the pom (the packaged application could not
+"paper" (seed 1), polycarpol with "paper" (seed 2, `slow`; polycarpol "gui" has no complete golden run: the
+2001 ring finder crashed in every seed). Additions: the Example Dataset menu, the command-line options, and the
+self-test (DV-87); packaging (section 15). Fixes found on the way: `cdk-standard` is a runtime dependency
+of cdk-ctab/-smiles/-sdg/-depict, and the pom had demoted it to test scope (the packaged application could not
 draw a structure; tests and `scripts/run-app.sh` hid it because the latter put the test classpath on the
 application's classpath); the test JVMs run with `user.home` = the build directory, so the 2001 code of the
 oracle tests no longer writes the user's real `~/seneca.*`.
 
 **Fixes after the verification round, done.** App Nap suspended during runs (DV-89, `app.RunActivityTest`,
 launch test step 4); larger default window, run tab and judge matrices readable at the default size,
-chart colours, Structure Display titles (DV-88, `app.DefaultLayoutTest`); 2D layouts scored and improved
-(`chem.Layout2D`, `chem.Layout2DTest`); Logbook whole lines and bounded (DV-90, `app.LogbookTest`); slot
+chart colours, and Structure Display titles (DV-88, `app.DefaultLayoutTest`); 2D layouts scored and improved
+(`chem.Layout2D`, `chem.Layout2DTest`); Logbook in whole lines and bounded (DV-90, `app.LogbookTest`); slot
 ids restart after "Clear Slot List" as in 2001 (DV-82, `structgen.RunControllerTest`); failed 2D
 autoconfigure reported (DV-83); preferences in a folder of their own (DV-78); macOS "Settings…" (DV-91);
-menu items without the toolbar tooltips (as 2001); SML DEFAULT writer keeps a missing solvent missing
+menu items without the toolbar tooltips (as in 2001); SML DEFAULT writer keeps a missing solvent missing
 (DEVIATIONS.md DV-08); renderings paint instead of print, so table selections show (`GuiTestSupport.render`).
 
 **Fixes after the second verification round, done.** Structure drawings without overlapping atoms
 (DV-88 f, `chem.Layout2DTest.goldenBestStructuresHaveNoOverlaps`, `verify.VisualRound2VerifyTest`); the
 spectrum label reads "n signals in …" from the start, as users saw it in 2001; Save asks before replacing
 an existing file when it appended `.sml` (or `.sdf`) itself (DV-72); the Logbook follows the newest text and a
-single structure fills its Structure Display window (DV-92); `scripts/build-app.sh` registers only the
-default `dist/` bundle with Launch Services (or with `REGISTER=1`).
+single structure fills its Structure Display window (DV-92); `scripts/build-app.sh` registers a bundle with Launch Services only if it
+is built into the default `dist/` (or with `REGISTER=1`).
 
 ## 15. Packaging and launch test
 
@@ -563,48 +559,48 @@ of the script are the reference:
    release for aarch64 once into `~/Library/Caches/seneca-build` and checks its SHA-256): the modules `jdeps`
    reports (java.base, java.desktop, java.sql, plus java.logging and jdk.localedata with en/de), stripped,
    compressed, the `legal/` notices jlink leaves out without `jmods/` (jdk.localedata's) copied from the JDK,
-   every file made owner-writable (jlink copies the read-only `legal/` notices, on which a user's
+   and every file made owner-writable (jlink copies the read-only `legal/` notices, on which a user's
    `xattr -drs com.apple.quarantine` would fail). Then the portability check: a runtime whose native libraries
    load anything from outside macOS and the runtime (Homebrew's openjdk links `/opt/homebrew` libraries) gets a
    warning here, and `build-dmg.sh` refuses it;
 5. `jpackage --type app-image` of `RUNTIME_JDK`: name Seneca, version from pom.xml without a `-` suffix, bundle
    id `io.github.steinbeck.seneca`, main class `io.github.steinbeck.seneca.app.SenecaApp`, JVM options
    `-Xss16m` (deep legacy recursion, as in the tests), `--enable-native-access=ALL-UNNAMED` (App Nap,
-   DV-89) and the examples directory;
+   DV-89), and the examples directory;
 6. `Info.plist` (plutil): document type "SENECA Dataset" for `.sml` (role Editor, owner) and the exported
    type `io.github.steinbeck.seneca.sml` (conforms to public.xml), `NSHighResolutionCapable`,
    `LSMinimumSystemVersion` set to the highest minimum macOS version of the bundle's binaries (11.0 with
-   Temurin 25; jpackage writes 10.11), jpackage's default `NSMicrophoneUsageDescription` removed;
+   Temurin 25; jpackage writes 10.11), and jpackage's default `NSMicrophoneUsageDescription` removed;
 7. `THIRD-PARTY-NOTICES.md` and `LICENSE` into `Contents/Resources`;
 8. ad-hoc signature `codesign --force --deep -s -`, verified;
 9. `lsregister -f` registers the bundle (only a build into the default `dist/`, or with `REGISTER=1`; other
    `DIST` directories, or `REGISTER=0`, print the command instead).
 
 `scripts/build-dmg.sh` packs it into the release asset `dist/Seneca-<version>-macOS-arm64.dmg` (Seneca.app, a
-link to `/Applications`, `README.txt` with the Gatekeeper steps, `THIRD-PARTY-NOTICES.md`, `LICENSE.txt`) and
+link to `/Applications`, `README.txt` with the Gatekeeper steps, `THIRD-PARTY-NOTICES.md`, and `LICENSE.txt`) and
 its `.sha256`. It refuses an app with an invalid signature, a bundle version other than the pom's, a
-non-portable runtime, a binary of another architecture, missing notices or files the owner cannot write;
+non-portable runtime, a binary of another architecture, missing notices, or files the owner cannot write;
 it stages outside the working copy without extended attributes, verifies the image, and checks the mounted
-copy (signature, `/Applications` link, no extended attributes but macOS's `com.apple.provenance` and the
+copy (signature, `/Applications` link, no extended attributes except macOS's `com.apple.provenance` and the
 Finder's `com.apple.FinderInfo`). `scripts/collect-sources.sh` (online) gathers the source code the release
 carries next to the image: the `-sources.jar` of every library in `Contents/app`, zipped, and Eclipse
 Adoptium's source archive of the bundled Temurin release (pinned SHA-256).
 
 `scripts/launch-test.sh` tests the built application unattended (its windows appear for a few seconds; the
 log files go to a scratch directory through `--logdir`): (1) the launcher binary with `--smoke=<report>`,
-(2) the same through Launch Services (`open -n ... --args --smoke=...`), (3) a normal start with an example
+(2) the same through Launch Services (`open -n ... --args --smoke=...`), and (3) a normal start with an example
 dataset as argument, still running after 10 s with nothing on stderr, then killed. The self-test
 (`app.Smoke`) opens the example pinene, paints every tab, presses the buttons of the golden "gui" recipe,
 starts one slot (seed 1, cap 5,000,000 unless `--seed` is given), waits, polls, summarizes, and reports the
-runtime, look and feel, run and every uncaught exception or WARNING log record; it passes iff there is none.
+runtime, look and feel, run, and every uncaught exception or WARNING log record; it passes if and only if there is none.
 The launch test also requires the golden numbers of pinene.gui.seed1 (21248 iterations, 2400/2400) and the
-bundled runtime. A run that does not end within 5 minutes is stopped by the self-test ("Stop Selected") and
-reported, not failed (narelin "gui" keeps reheating in DEFAULT). On macOS the self-test also reports whether
+bundled runtime. The self-test stops a run that does not end within 5 minutes ("Stop Selected") and
+reports it instead of failing (narelin "gui" keeps reheating in DEFAULT). On macOS, the self-test also reports whether
 App Nap was suspended during the run (a problem if not) and restored afterwards. Step (4) of the launch
 test measures the speed in the background: the self-test on narelin capped at 400,000 iterations, started
 with `open -g` (never activated), next to the same run on the command line (`cli generate`, bundled
 runtime); the app must reach 60 % of the command line's iterations per second (measured: 9,694 vs 9,925;
 with App Nap allowed through the diagnostic property `-Dseneca.allowAppNap=true`: 4,286). The measurement
-needs an otherwise idle Mac: under heavy load from other processes the step fails (app about 1,200 it/s,
-command line about 3,100) and the app, whose self-test then times out, is killed with SIGKILL if SIGTERM does
+needs an otherwise idle Mac: under heavy load from other processes, the step fails (app about 1,200 it/s,
+command line about 3,100), and the app, whose self-test then times out, is killed with SIGKILL if SIGTERM does
 not stop it. `SPEED_TEST=0` skips it. `build-app.sh` and `run-app.sh` run Maven offline unless `MVN_OFFLINE=` is set.

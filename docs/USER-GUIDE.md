@@ -1,4 +1,4 @@
-# SENECA – Kurzanleitung
+# SENECA-Kurzanleitung
 
 SENECA sucht zu einer Summenformel und NMR-Daten die Konstitution, die am besten zu den Spektren passt
 (Simulated Annealing; Steinbeck, J. Chem. Inf. Comput. Sci. 2001, 41, 1500). Diese Fassung ist die
@@ -37,7 +37,7 @@ Zwischen mehreren Datensätzen wechselt man mit **Datasets ▸ switch**.
   der Beispiele.
 - **File ▸ Import ▸ LUCY dataset**: eine LUCY-Datei (`.col`).
 - **File ▸ New Dataset**: ein leerer Datensatz. Die Summenformel trägst Du unter *General Settings* ein,
-  die Signale unter *NMR Spectra* (von Hand oder mit „Paste WinNMR pp from clipboard").
+  die Signale unter *NMR Spectra* (von Hand oder mit „Paste WinNMR pp from clipboard“).
 - **File ▸ Save ▸ SENECA Dataset** speichert den aktuellen Datensatz als SML.
 
 ## 3. Datensatz vorbereiten
@@ -55,10 +55,10 @@ H,H-COSY und C,H-long-range Corr. (2D-Korrelationen, HMBC), Carbon Shifts (HOSE-
 13C-Verschiebungen), Symmetric Atoms Classes, Features, Hybridization und Heterobond Attachments.
 In jedem Unterreiter:
 
-- **Autoconfigure Judge** füllt den Judge aus den Spektren. Bewährt ist: H,H-COSY, C,H-long-range Corr. und
-  Carbon Shifts nacheinander automatisch konfigurieren, soweit der Datensatz die Spektren dazu hat.
-  **Features** ist optional: Es zieht Punkte ab für Drei- und Vierringe und für Bindungen zwischen zwei
-  Heteroatomen, kann also nur unplausible Strukturen abwerten. Es verlangsamt jede Iteration deutlich (bei
+- **Autoconfigure Judge** füllt den Judge aus den Spektren. Am besten konfigurierst Du H,H-COSY,
+  C,H-long-range Corr. und Carbon Shifts nacheinander automatisch, soweit der Datensatz die Spektren dazu hat.
+  **Features** ist optional: Es zieht für Drei- und Vierringe und für Bindungen zwischen zwei Heteroatomen
+  Punkte ab, kann also nur unplausible Strukturen abwerten. Es verlangsamt jede Iteration deutlich (bei
   polycarpol etwa um das Fünffache), und bei pinene bestraft es den Vierring des α-Pinens selbst.
 - **Hybridization** und **Heterobond Attachments** bleiben besser aus: Wie 2001 werden ihre Tabellen beim Start
   eines Laufs geleert. Sie vergeben dann 0 Punkte, und Hybridization zählt trotzdem zur Höchstpunktzahl, die
@@ -66,17 +66,17 @@ In jedem Unterreiter:
 - **Activate this Judge?** schaltet den Judge ein oder aus. Ein 2D-Judge ohne passendes Spektrum muss aus sein.
 - **Report Judgeconfig** zeigt die Konfiguration eines 2D-Judges als Text.
 
-**Die Reihenfolge zählt:** erst Autoassignment, dann Autoconfigure. Ohne zugeordnete Verschiebungen hat
+**Erst Autoassignment, dann Autoconfigure.** Ohne zugeordnete Verschiebungen hat
 kein Judge etwas zu bewerten, die erreichbare Höchstpunktzahl ist 0, und die Suche liefe blind. In diesem
 Fall verweigert SENECA den Start mit einem Hinweis (2001 lief so ein Lauf los und schrieb jede Struktur ins
 Protokoll).
 
-Die Judge-Konfiguration wird beim Speichern **nicht** mit abgelegt (wie 2001). Nach dem Öffnen also
-Autoconfigure wiederholen.
+SENECA speichert die Judge-Konfiguration **nicht** mit ab (wie 2001). Nach dem Öffnen also Autoconfigure
+wiederholen.
 
 **Annealing Schedule.** Der Kühlplan. Hat der Datensatz keinen, legt **New ->** einen mit den Standardwerten an
-(Plateau Steps 500, max. Uphill Steps 50; auch ein neuer Datensatz bekommt diese). Das ist viel kürzer als der
-Plan, den polycarpol mitbringt (10000 und 1000).
+(Plateau Steps 500, max. Uphill Steps 50; auch ein neuer Datensatz bekommt diese). Dieser Plan ist viel kürzer
+als der, den polycarpol mitbringt (10000 und 1000).
 Werte ändern: Eintrag rechts auswählen, Felder links ändern, **-> Update ->**.
 
 ## 4. Rechnen
@@ -85,19 +85,19 @@ Reiter **Structure Generation**:
 
 1. **Add run slot** legt einen Rechenplatz an (eine Zeile der Tabelle). Mehrere Plätze rechnen parallel,
    jeder mit eigenem Zufallsstart.
-2. Zeile(n) markieren, **Start as selected**. Läuft ein Platz schon, wird sein Lauf erst beendet.
+2. Zeile(n) markieren, **Start as selected**. Läuft ein Platz schon, beendet SENECA zuerst dessen Lauf.
 3. **Stop Selected** hält an. **Reset selected** verwirft Lauf und Kurven. **Clear Slot List** beendet alle
    Läufe und leert die Tabelle; der nächste Platz heißt wieder `local0`.
 
-Ein Lauf rechnet auch dann mit voller Geschwindigkeit, wenn SENECA im Hintergrund liegt: solange gerechnet
-wird, bittet SENECA macOS, das Programm nicht zu drosseln (App Nap).
+Ein Lauf rechnet auch dann mit voller Geschwindigkeit, wenn SENECA im Hintergrund liegt: solange ein Lauf
+rechnet, bittet SENECA macOS, das Programm nicht zu drosseln (App Nap).
 
 Fehlt etwas (keine Atome, kein Kühlplan, ein Judge passt nicht zur Formel), meldet SENECA das, und nichts startet.
 
 ## 5. Ergebnisse lesen
 
-- **Tabelle**: Status („Running", „Holding Results" = fertig, „Stopped by User") und Iterationen je Platz.
-- **Annealing Data**: der beste Score über die Iterationen, je Platz eine Kurve, dazu die Linie „max. Score"
+- **Tabelle**: Status („Running“, „Holding Results“ = fertig, „Stopped by User“) und Iterationen je Platz.
+- **Annealing Data**: der beste Score über die Iterationen, je Platz eine Kurve, dazu die Linie „max. Score“
   (der bestmögliche Wert). Ein Klick auf das Diagramm schaltet auf die Temperatur kT um und zurück.
 - **Best structure / Evaluation**: alle zwei Sekunden die bisher beste Struktur eines Platzes (reihum) und ihre
   Bewertung je Judge. Score gleich max. Score heißt: alle Daten erklärt. Ein Doppelklick auf die Struktur
@@ -105,7 +105,7 @@ Fehlt etwas (keine Atome, kein Kühlplan, ein Judge passt nicht zur Formel), mel
   Bewertung lassen sich verschieben.
 - **Summarize Result**: alle Ergebnisse aller Plätze, nach Score sortiert, in einem Fenster
   *Structure Display - <Datensatz>*. Ein Lauf behält jede Struktur, die mindestens so gut ist wie die bisher
-  beste und nicht schon unter den behaltenen ist, und zwar die letzten 30. Bei gleichem Score stehen die
+  beste und noch nicht unter den behaltenen ist; davon bleiben die letzten 30. Bei gleichem Score stehen die
   Strukturen in der Reihenfolge, in der sie gefunden wurden; die „Best structure“ des Laufs ist also die
   letzte Kachel mit dem höchsten Score. Oft erreichen mehrere Konstitutionen die Höchstpunktzahl, und die
   Literaturstruktur ist nicht unbedingt die letzte davon.
@@ -122,7 +122,7 @@ Protokolldateien im Home-Verzeichnis, bei jedem Programmstart geleert: `seneca.l
 
 ## 6. Optionen beim Start
 
-Sie werden an die App angehängt, z.B. `open -n dist/Seneca.app --args --logdir=/tmp/seneca`:
+Man hängt sie an den Aufruf der App an, z. B. `open -n dist/Seneca.app --args --logdir=/tmp/seneca`:
 
 | Option | Wirkung |
 |---|---|

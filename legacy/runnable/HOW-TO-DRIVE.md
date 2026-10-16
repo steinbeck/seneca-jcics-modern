@@ -2,7 +2,7 @@
 
 Audience: whoever writes the headless harness. Everything here was read from the source
 and, where marked **verified**, executed on JDK 25 against `legacy/runnable/classes`.
-A complete, compiling and verified example is `examples/DriveSketch.java`.
+A complete, compiling, and verified example is `examples/DriveSketch.java`.
 
 Line numbers refer to `legacy/original/src` (identical in `legacy/runnable/src` except
 where PATCHES.md says otherwise).
@@ -34,9 +34,9 @@ Timer (2 s): server.getTaskStatus() -> stoicGent.getStatus()   progress, best st
 ```
 
 `StructureGeneratorServer` is a thin RMI wrapper: every `Compute` method delegates 1:1 to
-the `StochasticGenerator` (it also calls `PropertyConfigurator.configure` with
-`seneca/engine/logging.server.properties` in its constructor). The harness calls
-`StochasticGenerator` directly; no RMI is needed.
+the `StochasticGenerator` (the wrapper's constructor also calls
+`PropertyConfigurator.configure` with `seneca/engine/logging.server.properties`). The
+harness calls `StochasticGenerator` directly and needs no RMI.
 
 ## 2. Minimal in-process run (verified)
 
@@ -58,17 +58,20 @@ StructureGeneratorResult r = (StructureGeneratorResult) sg.getResult();
 // r.scoreSummaries.elementAt(i): ScoreSummary {score, maxScore, description(HTML)}
 ```
 
-`serClone` = write to `ObjectOutputStream`, read back (SGServerPanel.goAction.serClone).
-Classpath: `legacy/runnable/classes` + all of `legacy/original/jar/*.jar`
-(the generator needs `compchem.jar`, `log4j.jar`; the assigners live in `seneca.client`
+`serClone` writes the object to an `ObjectOutputStream` and reads it back
+(SGServerPanel.goAction.serClone).
+Classpath: `legacy/runnable/classes` and all of `legacy/original/jar/*.jar`
+(the generator needs `compchem.jar` and `log4j.jar`; the assigners live in `seneca.client`
 but use no Swing).
 
-Order matters:
-1. `calcMaxScore()` on the dataset's judges *before* serialising (maxScore travels in the copy).
-2. `Rng.seed()` after all configuration, before `run()`; nothing before `run()` draws.
-3. One generator per JVM at a time if results must be reproducible (shared static Rng).
+Rules for the harness:
+1. Call `calcMaxScore()` on the dataset's judges *before* serialising (maxScore travels in
+   the copy).
+2. Call `Rng.seed()` after all configuration and before `run()`; nothing before `run()` draws.
+3. Run one generator per JVM at a time if results must be reproducible (Rng is static and
+   shared).
 
-**Verified results** (pinene.sml, AutoAssign, HMBC + HOSECode + Feature judges enabled,
+**Verified results** (pinene.sml; AutoAssign; HMBC, HOSECode, and Feature judges enabled;
 HHCOSY disabled because pinene has no COSY data):
 
 | seed | iterations | best/max | results | wall time |
@@ -78,11 +81,11 @@ HHCOSY disabled because pinene has no COSY data):
 | 2, 4, 5, 6, 8 | 1.2-1.3 M | 2305/2400 | 13-24 | ~30 s |
 | 3, 7 | 0 | — | 0 | <0.1 s (see quirk Q1) |
 
-Same seed twice gives byte-identical result lists (seed 1 and seed 42 checked).
+The same seed run twice gives byte-identical result lists (checked for seed 1 and seed 42).
 
 ## 3. Dataset flow from an .sml file
 
-`SpecMLReader(File)` parses with JAXP DOM, finds the `<senecadataset title=...>` element and
+`SpecMLReader(File)` parses with JAXP DOM, finds the `<senecadataset title=...>` element, and
 dispatches its children (`handleSDParts`, SpecMLReader.java:162):
 
 | Element | Handling |
@@ -95,13 +98,14 @@ dispatches its children (`handleSDParts`, SpecMLReader.java:162):
 | `<judge>` | **ignored** (`//readJudge(newNode);`, line 186; `readJudge` would not invoke anything anyway) |
 | `<serverinfo>` | `sd.serverList` (RMI, irrelevant) |
 
-`getSenecaDataset()` then calls `sd.init()`, which appends fresh, **disabled** judges in this
+`getSenecaDataset()` then calls `sd.init()`, which appends fresh, disabled judges in this
 order: `HHCOSYJudge, HMBCJudge, HeteroBondsJudge, SymmetryJudge, HybridizationJudge,
-HOSECodeJudge, FeatureJudge`. Judge order = evaluation order in `getScore`.
+HOSECodeJudge, FeatureJudge`. `getScore` evaluates the judges in this order.
 `sd.getJudge("Name")` returns the instance from `sd.judges` (or a new one if absent).
 
 **Verified survey of the bundled datasets** (state after reading, then after
-`CarbonShiftAssigner`; COSY/HMBC = number of `true` cells in the assignment, -1 = null):
+`CarbonShiftAssigner`; COSY and HMBC give the number of `true` cells in the assignment,
+-1 = null; in the schedule column, PS = plateauSteps and UHS = maxUphillSteps):
 
 | file | molecule read | H after AutoAssign (formula) | shifts | schedule | COSY | HMBC |
 |------|---------------|------------------------------|-------:|----------|-----:|-----:|
@@ -117,20 +121,22 @@ HOSECodeJudge, FeatureJudge`. Judge order = evaluation order in `getScore`.
 | Hyperaspine | no | 0 (30) | 19 | **none** | -1 | -1 |
 
 Consequences for the harness:
-- For "molecule read = no" files the GUI user had to press AutoAssign; for "yes" files not.
-- Where H after AutoAssign < formula H (OH/NH hydrogens), `CarbonShiftAssigner` leaves
-  hetero-atom `HCount` at 0 unless the carbon H sum equals the formula H; the GUI user then
-  edited `HCount` in the Atom Properties table. The harness needs an explicit per-atom
+- For "molecule read = no" files the GUI user had to press AutoAssign; for "yes" files the
+  user did not.
+- Where H after AutoAssign is below formula H (OH/NH hydrogens), hetero-atom `HCount` stays
+  at 0: `CarbonShiftAssigner` assigns H counts to carbons only, and it writes 0 to the hetero
+  atoms when the carbon H sum equals the formula H. The GUI user then edited `HCount` in the
+  Atom Properties table. The harness needs an explicit per-atom
   H-count override to reproduce such runs.
-- No `<annealingschedule>` -> `sd.annealingSchedules` empty -> `run()` dies in
-  `initAnnealing()` (`schedules.elementAt(0)`, caught, logs "Error in StoicGent.run()").
-  The GUI user added a schedule in the "Annealing Schedule" tab (`new AnnealingSchedule()`
-  defaults). The harness must do the same.
+- Without an `<annealingschedule>`, `sd.annealingSchedules` stays empty and `run()` dies in
+  `initAnnealing()` (`schedules.elementAt(0)`; the exception is caught and logged as
+  "Error in StoicGent.run()"). The GUI user added a schedule in the "Annealing Schedule"
+  tab (with the defaults of `new AnnealingSchedule()`). The harness must do the same.
 
 ## 4. Judge configuration (what each "Autoconfigure" does)
 
-All judges: `hasMaxScore` true except `WienerIndexJudge` (not in `sd.init()`, unused).
-`getEnabled()` defaults to false; only enabled judges are `init()`ed and scored.
+`hasMaxScore` is true for all judges except `WienerIndexJudge`, which is not in `sd.init()`
+and is unused. `getEnabled()` defaults to false; only enabled judges are `init()`ed and scored.
 
 | Judge | GUI configuration | Harness equivalent |
 |-------|-------------------|--------------------|
@@ -144,33 +150,35 @@ All judges: `hasMaxScore` true except `WienerIndexJudge` (not in `sd.init()`, un
 
 Configurator constructors run when the dataset window opens and already have an effect:
 `HybridizationJudgeConfigurator` and `HeteroBondsJudgeConfigurator` set
-`judge.getAttic().atomSet = sd.getSetOfNodes()` and call `judge.init()` (allocates
-`scores`/`isHeteroBonded`). DriveSketch replicates this.
+`judge.getAttic().atomSet = sd.getSetOfNodes()` and call `judge.init()` (which allocates
+`scores`/`isHeteroBonded`). DriveSketch replicates both steps.
 
 In the GUI, a 2D judge whose assigner returned `true` but left `assignment == null`
 (e.g. HHCOSY on a dataset without COSY signals) stays enabled, and `goAction` then throws
-an NPE in `TwoDSpectrumJudge.calcMaxScore()` before anything is started. The harness
-should simply not enable such a judge (DriveSketch does this).
+a NullPointerException (NPE) in `TwoDSpectrumJudge.calcMaxScore()` before it starts anything.
+The harness should leave such a judge disabled, as DriveSketch does.
 
 ## 5. What `StochasticGenerator.run()` does (order of operations and random draws)
 
-1. `maxScore = getMaxScore()` (sum of enabled judges' `getMaxScore()`, -1 if any enabled
-   judge lacks a max score).
-2. `SingleRandomStructureGenerator.generate()` on the atom set: random saturated, connected
-   starting structure. **Draws:** one per `getAnotherUnsaturatedNode` call and one per bond
-   formed; restarts until connected and saturated.
-3. `initJudges()`: for enabled judges `setAttic(generator attic)` then `init()`.
-4. For each schedule: `initAnnealing()` = 500 connected random mutations to measure the mean
-   score change; `start_kT = -mean / ln(initialAcceptanceProbability)`.
-   **Draws:** `mutate()` = 4 per attempt to pick 4 distinct atoms (repeat until distinct),
-   then 1 per attempt for the new bond order (repeat until different), outer repeat until valid.
-5. Main loop per step: `mutate`, connectivity test; if connected: score all enabled judges,
-   **one draw `rnd` always** (also when the move is downhill), Metropolis accept, update best,
-   duplicate check by isomorphism against stored results (`notInStock`), `cool()`,
+1. `maxScore = getMaxScore()` (the sum of the enabled judges' `getMaxScore()`, or -1 if any
+   enabled judge lacks a max score).
+2. `SingleRandomStructureGenerator.generate()` on the atom set builds a random starting
+   structure that is saturated and connected. **Draws:** one per `getAnotherUnsaturatedNode`
+   call and one per bond formed; the method restarts until the structure is connected and
+   saturated.
+3. `initJudges()`: for each enabled judge, `setAttic(generator attic)`, then `init()`.
+4. For each schedule: `initAnnealing()` makes 500 connected random mutations to measure the
+   mean score change; `start_kT = -mean / ln(initialAcceptanceProbability)`.
+   **Draws:** `mutate()` draws 4 per attempt to pick 4 distinct atoms (repeated until they are
+   distinct), then 1 per attempt for the new bond order (repeated until it differs); an outer
+   loop repeats until the mutation is valid.
+5. Main loop per step: `mutate` and a connectivity test; if connected: score all enabled
+   judges, one draw `rnd` always (even when the move is downhill), Metropolis accept,
+   update best, duplicate check by isomorphism against stored results (`notInStock`), `cool()`, and
    convergence/reheat logic (reheat factor 0.3 + 0.1 per reheat, abort at 1.0).
-6. Results: every new best-or-equal, non-isomorphic structure is pushed (MDL string +
-   `ScoreSummary`) into `structureGeneratorResult` (`LIFOQueue(30)`).
-   Also logged via log4j category `seneca.structgen.StochasticGenerator.results`
+6. Results: the generator pushes every new best-or-equal, non-isomorphic structure (MDL string
+   and `ScoreSummary`) into `structureGeneratorResult` (`LIFOQueue(30)`).
+   It also logs them via log4j category `seneca.structgen.StochasticGenerator.results`
    (GUI: `~/seneca.results.sdf`).
 
 All randomness of a run goes through `seneca.structgen.Rng` (6 sites in
@@ -178,7 +186,7 @@ All randomness of a run goes through `seneca.structgen.Rng` (6 sites in
 nondeterminism was found in the generator path: `compchem.jar` and the judges contain no
 `Math.random`/`java.util.Random`; the only hash-ordered iterations (`FeatureJudge` sum
 over `Hashtable.elements()`, `Atom.toString`) are order-independent or debug output.
-Console output of the assigners/configurators contains identity hash codes
+Console output of the assigners and configurators contains identity hash codes
 (`HMBCJudge: [[[Z@6996db8`), so compare results, not raw stdout.
 
 ## 6. Quirks of the original that a 1:1 port must preserve (and tests must expect)
@@ -186,25 +194,25 @@ Console output of the assigners/configurators contains identity hash codes
 - **Q1 Immediate termination.** `goOn` starts `false` (StochasticGenerator.java:62) and is
   set `true` only inside the "structure is connected" branch (line 326). If the first
   mutation of a schedule yields a disconnected structure, the inner `while (goOn && ...)`
-  exits after one step and the schedule ends with no result. Observed for 2 of 8 seeds on
-  pinene. Consequence: `getStatus()` then throws NPE (`new String(this.bestStructure)`,
-  line 411) — the GUI timer swallows it.
-- **Q2 maxScore usually not reached.** pinene converges to 2305/2400 in most seeds; the
+  exits after one step, and the schedule ends with no result. This early exit occurred for
+  2 of 8 seeds on pinene. `getStatus()` then throws an NPE (`new String(this.bestStructure)`,
+  line 411), which the GUI timer swallows.
+- **Q2 maxScore usually not reached.** pinene converges to 2305/2400 for most seeds; the
   run ends after the reheat factor reaches 1.0 (~30 s on this Mac).
 - **Q3 FeatureJudge maxScore is 0.** `ringsizeRestrictionEnabled` is set in `init()`
   (FeatureJudge.java:65), which runs only in the generator, after the client-side
-  `calcMaxScore()`. Ring penalties still apply during evaluation. `judgeRingScore()` is
-  called twice per evaluation (line 93), harmless.
+  `calcMaxScore()`. Ring penalties still apply during evaluation. `judgeRingScore()` runs
+  twice per evaluation (line 93); the double call is harmless.
 - **Q4 Manual hybridization/hetero-bond settings are wiped.** `initJudges()` calls `init()`
-  with the generator's attic: `HybridizationJudge.init()` reallocates `scores` (line 60),
+  with the generator's attic: `HybridizationJudge.init()` reallocates `scores` (line 60), and
   `HeteroBondsJudge.init()` reallocates `isHeteroBonded` (line 53). Both judges therefore
-  score 0 during generation even when configured. In addition `HeteroBondsJudge` declares a
+  score 0 during generation even when configured. In addition, `HeteroBondsJudge` declares a
   private `maxScore` (line 36) that shadows `Judge.maxScore`, so its `getMaxScore()` is 0.
 - **Q5 TwoD assigners' alternative assignments are buggy.** `pickClosestCarbons` adds
   `setOfNodes[thisPosition]` instead of `[i]` for equal shifts (HMBCAssigner.java:154,
   HHCOSYAssigner.java:165); HHCOSYAssigner uses `elementAt(j)` instead of `(k)` (line 96).
   `TwoDSpectrumJudge.evaluate` counts every rule as "satisfied" (line 131); the score is
-  correct, the message count is not.
+  correct, but the message count is not.
 - **Q6 The judges handed to the generator are `serClone(sd.judges)`, not the `judges`
   vector of clones that `goAction` builds (lines 737 vs 749).** `calcMaxScore()` therefore
   runs on the dataset's own judges before they are serialised.
@@ -212,18 +220,20 @@ Console output of the assigners/configurators contains identity hash codes
   in the same JVM can resolve to the previous document's root if the new document's first
   child is not the `senecadataset` element. Use one JVM per file or keep files simple.
 - **Q8 Thread priority.** `run()` calls `setPriority(Thread.MIN_PRIORITY)` on the current
-  thread (also when called directly instead of via `start()`).
+  thread, even when it is called directly rather than through `start()`.
 
 ## 7. Logging and files
 
 - Client config `seneca/client/logging.properties`: root DEBUG with console appender at
   ERROR; `seneca.structgen` -> `${user.home}/seneca.log`; `...StochasticGenerator.results`
   -> `${user.home}/seneca.results.sdf`; `...annealing` -> `${user.home}/seneca.annealing.log`
-  (all `Append=false`, i.e. overwritten per JVM); `...StochasticGenerator.log` -> GUI text pane.
+  (all `Append=false`, so each JVM overwrites them); `...StochasticGenerator.log` -> GUI
+  text pane.
 - `StructureGeneratorServer` re-applies `seneca/engine/logging.server.properties` (same
   files, no text pane).
 - A headless harness should configure log4j itself (or pass `-Duser.home=<tmp>` to keep
-  the home directory clean). Debug strings are built even when not logged (CPU only).
+  the home directory clean). The code builds debug strings even when it does not log them
+  (a cost in CPU time only).
 
 ## 8. Monitoring and stopping a threaded run
 
@@ -237,5 +247,5 @@ StructureGeneratorStatus s = (StructureGeneratorStatus) sg.getStatus();
 sg.end();                                       // pleaseStop = true; loop exits after current step
 sg.join();
 ```
-`sg.running` is a public field (true while `run()` is active). `getStatus()` throws NPE
+`sg.running` is a public field (true while `run()` is active). `getStatus()` throws an NPE
 until a first best structure exists (Q1).
